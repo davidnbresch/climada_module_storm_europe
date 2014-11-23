@@ -9,7 +9,10 @@ function Database_master_table=winterstorm_validate(plot_validation_chart,n_larg
 %   www.europeanwindstorms.org/cgi-bin/storms/storms.cgi?sort=loss&opt=
 %
 %   The code first reads the Database_master_table.xls, an Excel file with
-%   Storm,Year,Month,Day,Insured_loss,Affected_countries...
+%   Storm,Year,Month,Day,Insured_loss,Affected_countries... and the
+%   insured value (total value of insurable assets) in Value (used to scale
+%   the GDP-based country asset distribution to total insurable asset
+%   value).
 %
 %   Then, it creates the single event hazard set file for each storm, the
 %   entity for each of the countries affected by the respective storm and
@@ -21,7 +24,7 @@ function Database_master_table=winterstorm_validate(plot_validation_chart,n_larg
 %   A Google search for GDP Germany reveals 3.635 Billionen USD (2013),
 %   whereas GDP_entity delivers 3.4951e+12 (extrapolated from 3280529801324
 %   USD in 2010 to 2014). Since we need not the GDP, but the insured asset
-%   base here, 
+%   base here,
 %
 %   See also: winterstorm_calibrate
 % CALLING SEQUENCE:
@@ -84,7 +87,10 @@ save_hazard_flag=0; % =0
 % read the master table with storm names, dates, loss and affected
 % countries:
 Database_master_table=climada_spreadsheet_read('no',Database_master_table_file,'table',1);
+Value_table=climada_spreadsheet_read('no',Database_master_table_file,'Value',1);
 % contains: Storm,Year,Month,Day,Insured_loss,Affected_countries...
+Database_master_table.assets=Value_table;
+Database_master_table.assets.assets_multiplier=Database_master_table.assets.Value*0; % init
 
 % read the grid on which all hust fields are stored
 RAW = textread(grid_locations_filename,'','delimiter',',','emptyvalue',NaN,'headerlines',1);
@@ -197,6 +203,21 @@ for storm_i=1:n_storms
                     save(entity_reencoded_file,'entity');
                 end
                 
+                country_pos=strmatch(country_name,Database_master_table.assets.Country);
+                if ~isempty(country_pos)
+                    if Database_master_table.assets.Value(country_pos)>0
+                        assets_Value=sum(entity.assets.Value);
+                        assets_multiplier=Database_master_table.assets.Value(country_pos)/assets_Value;
+                        entity.assets.Value=entity.assets.Value*assets_multiplier;
+                        %fprintf('\n%s assets multiplier %f\n',Database_master_table.assets.Country{country_pos},assets_multiplier);
+                        Database_master_table.assets.assets_multiplier(country_pos)=assets_multiplier;
+                    else
+                        entity.assets.Value=entity.assets.Value*2; % default
+                    end
+                end
+                
+                Database_master_table.assets.Value_corrected(country_pos)=sum(entity.assets.Value); % to keep track
+                
                 if test_damage_function
                     % switch to better damage function
                     if test_damage_function==1
@@ -230,7 +251,7 @@ for storm_i=1:n_storms
                     entity.assets.DamageFunID=entity.assets.DamageFunID*0+1;
                     annotation_ext='';
                     %fprintf('\n');climada_damagefunctions_map(entity)% for check
-                end                
+                end
                 
                 % calculate the event loss for country
                 % ------------------------------------
@@ -268,20 +289,18 @@ for storm_i=1:n_storms
     
 end % storm_i
 
+return
+
 Database_master_table.EDS=EDS; % store all EDSs
 Database_master_table.bar_chart_table=bar_chart_table; % pass on
 Database_master_table.bar_chart_label=bar_chart_label; % pass on
 
-
-%bar_chart_table(:,2)=bar_chart_table(:,2)*10; % blow up
-%fprintf('WARNING: plotted modeled damages multiplied by 10!\n');
-        
 if plot_validation_chart
     % show the bar char
     figure ('Name','Event damage comparison')
     set(gcf,'Color',[1 1 1]);
-    bar(bar_chart_table,'grouped'); title('Event damage'); legend('Insured','Modeled');
-    set(gca,'XTick',1:n_storms);
+    bar(bar_chart_table,'grouped','EdgeColor','none'); title('Event damage'); legend('Insured','Modeled');
+    set(gca,'XTick',1:length(bar_chart_label));
     set(gca,'XTickLabel',bar_chart_label); % label with storm names
     
     % XTick=get(gca,'XTick'); % following works only for the actual size of the plot
