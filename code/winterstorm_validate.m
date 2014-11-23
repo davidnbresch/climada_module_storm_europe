@@ -1,4 +1,4 @@
-function Database_master_table=winterstorm_validate(plot_validation_chart)
+function Database_master_table=winterstorm_validate(plot_validation_chart,n_largest_storms)
 % climada
 % NAME:
 %   winterstorm_validate
@@ -25,15 +25,19 @@ function Database_master_table=winterstorm_validate(plot_validation_chart)
 %
 %   See also: winterstorm_calibrate
 % CALLING SEQUENCE:
-%   Database_master_table=winterstorm_validate
+%   Database_master_table=winterstorm_validate(plot_validation_chart,n_largest_storms)
 % EXAMPLE:
 %   Database_master_table=winterstorm_validate
 % INPUTS:
 % OPTIONAL INPUT PARAMETERS:
-%   plot_validation_chart: if =1, plot the validation bar chart (default)
-%       =0, do not plot
+%   plot_validation_chart: if =1, plot the validation bar chart
+%       =0, do not plot (default)
 %       See also plot_gust_field and entity_check_plot in PARAMETERS
 %       section to allow for more graphical output.
+%   n_largest_storms: if not empty, the number of storms treated
+%       if empty, all storms are treated (as listed in the
+%       Database_master_table, default)
+%       Useful for testing, e.g. n_largest_storms=2
 % OUTPUTS:
 %   Database_master_table: the master table, now with modeled damages and
 %       all EDSs (one for each storm for each country)
@@ -48,6 +52,9 @@ Database_master_table=[]; % init output
 
 global climada_global
 if ~climada_init_vars,return;end % init/import global variables
+
+if ~exist('plot_validation_chart','var'),plot_validation_chart=0;end
+if ~exist('n_largest_storms','var'),n_largest_storms=[];end
 
 %%if climada_global.verbose_mode,fprintf('*** %s ***\n',mfilename);end % show routine name on stdout
 
@@ -90,12 +97,15 @@ damagefunctions=climada_damagefunctions_read(damagefunctions_filename);
 
 n_storms=length(Database_master_table.Storm);
 
+if ~isempty(n_largest_storms)
+    n_storms=min(n_storms,n_largest_storms);
+end
+
 fprintf('processing %i storms\n',n_storms);
 
 EDS=[];next_EDS=1; % init
 
-%for storm_i=1:n_storms
-for storm_i=1:2
+for storm_i=1:n_storms
     
     fprintf('%s (reported damage %2.3f bn USD)\n',Database_master_table.Storm{storm_i},Database_master_table.Insured_loss(storm_i)/1e9);
     Modeled_damage=0;
