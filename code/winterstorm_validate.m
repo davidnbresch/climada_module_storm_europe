@@ -100,6 +100,8 @@ grid.Latitude=RAW(:,3)';
 
 % read the damagefunctions
 damagefunctions=climada_damagefunctions_read(damagefunctions_filename);
+pos=find(damagefunctions.DamageFunID==1);
+damagefunctions.DamageFunID(pos)=damagefunctions.DamageFunID(pos)*0+unique_DamageFunID;
 
 n_storms=length(Database_master_table.Storm);
 
@@ -248,7 +250,7 @@ for storm_i=1:n_storms
                     % force WS Europe damagefunctions (no surprise)
                     entity=rmfield(entity,'damagefunctions');
                     entity.damagefunctions=damagefunctions;
-                    entity.assets.DamageFunID=entity.assets.DamageFunID*0+1;
+                    entity.assets.DamageFunID=entity.assets.DamageFunID*0+unique_DamageFunID;
                     annotation_ext='';
                     %fprintf('\n');climada_damagefunctions_map(entity)% for check
                 end
