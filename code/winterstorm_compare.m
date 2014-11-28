@@ -9,6 +9,13 @@ function EDS=winterstorm_compare(entity)
 %   created by country_risk_calc). If not found, the code prompts for a WS
 %   hazard event set and re-encodes assets.
 %
+%   hazard sets from:
+%   Schwierz, C., P. K?llner-Heck, E. Zenklusen Mutter, D. N. Bresch,
+%   P.-L.Vidale, M. Wild, C., and Sch?r, 2010: Modelling European winter
+%   wind storm losses in current and future climate. Climatic Change (2010)
+%   101:485?514, doi: 10.1007/s10584-009-9712-1.   
+%
+%   See also winterstorm_validate
 % CALLING SEQUENCE:
 %   EDS=winterstorm_compare(entity)
 % EXAMPLE:
@@ -37,48 +44,8 @@ module_data_dir=[fileparts(fileparts(mfilename('fullpath'))) filesep 'data'];
 
 % PARAMETERS
 %
-%
 unique_DamageFunID=1234; % a kind of unique ID, unlikely to exist
 %
-%
-storm_info.name={'Daria' 'Lothar' 'Kyrill'};
-
-% Storm	Date*	Insured loss (USD, indexed to 2012)+	Affected countries	Umax**(ms-1)	Lowest MSLP++ (hPa)	Maximum vorticity***(10-5-1)	Sft+++
-% Daria (Burns' Day storm)	25/1/1990	8.2bn	Belgium, France, Germany, Netherlands and United Kingdom	37.92	948.62	11.89	48.05
-% Lothar	26/12/1999	8.0bn	France, Germany and Switzerland	36.72	973.16	6.43	18.82
-% Kyrill	18/1/2007	6.7bn	Austria, Belgium, France, Germany, Ireland, Netherlands and United Kingdom	36.38	961.12	8.55	59.43
-% Great Storm of 87	16/10/1987	6.3bn	France and United Kingdom	39.53	955.97	10.17	38.42
-% Vivian	26/2/1990	5.6bn	Belgium, France, Germany, Netherlands and United Kingdom	35.16	940.30	9.53	40.86
-% Klaus	24/1/2009	3.5bn	Andorra, France, Germany, Italy, Spain and Switzerland	37.23	965.95	9.25	24.36
-% Martin	27/12/1999	3.3bn	France, Italy and Switzerland	37.18	967.58	9.18	21.33
-% Xynthia	27/2/2010	2.9bn	Belgium, Denmark, France, Germany, Poland, Portugal, Spain, Sweden and United Kingdom	32.62	965.46	9.58	23.11
-% Anatol	3/12/1999	2.6bn	Denmark, Germany and Sweden	39.86	956.05	10.98	47.01
-% Erwin (Gudrun)	8/1/2005	2.2bn	Denmark, Ireland, Norway, Sweden and United Kingdom	39.22	959.89	9.82	36.08
-% Herta	3/2/1990	1.5bn	Belgium, France, Germany, Netherlands and United Kingdom	33.16	944.78	13.36	15.94
-% Emma	29/2/2008	1.4bn	Austria, Belgium, Czech Repubic, Germany, Netherlands, Poland and Switzerland	25.12	959.46	9.60	12.17
-% Wiebke	28/2/1990	1.4bn	Belgium, France, Germany, Netherlands, Switzerland and United Kingdom	32.24	944.18	7.77	25.16
-% Gero	11/1/2005	0.6bn	Ireland and United Kingdom	39.13	960.64	8.55	17.55
-% Ulli	3/1/2012	0.2bn	United Kingdom	36.32	954.30	10.24	19.02
-% Dagmar (Patrick)	26/12/2011	0.04bn	Finland and Norway	30.08	953.94	8.58	1.77    
-
-% Storm	Date*	Insured loss (USD, indexed to 2012)+	Affected countries	Umax**(ms-1)	Lowest MSLP++ (hPa)	Maximum vorticity***(10-5-1)	Sft+++
-% Daria (Burns' Day storm)	25/1/1990	8.2bn	Belgium, France, Germany, Netherlands and United Kingdom	37.92	948.62	11.89	48.05
-% Lothar	26/12/1999	8.0bn	France, Germany and Switzerland	36.72	973.16	6.43	18.82
-% Kyrill	18/1/2007	6.7bn	Austria, Belgium, France, Germany, Ireland, Netherlands and United Kingdom	36.38	961.12	8.55	59.43
-% Great Storm of 87	16/10/1987	6.3bn	France and United Kingdom	39.53	955.97	10.17	38.42
-% Vivian	26/2/1990	5.6bn	Belgium, France, Germany, Netherlands and United Kingdom	35.16	940.30	9.53	40.86
-% Klaus	24/1/2009	3.5bn	Andorra, France, Germany, Italy, Spain and Switzerland	37.23	965.95	9.25	24.36
-% Martin	27/12/1999	3.3bn	France, Italy and Switzerland	37.18	967.58	9.18	21.33
-% Xynthia	27/2/2010	2.9bn	Belgium, Denmark, France, Germany, Poland, Portugal, Spain, Sweden and United Kingdom	32.62	965.46	9.58	23.11
-% Anatol	3/12/1999	2.6bn	Denmark, Germany and Sweden	39.86	956.05	10.98	47.01
-% Erwin (Gudrun)	8/1/2005	2.2bn	Denmark, Ireland, Norway, Sweden and United Kingdom	39.22	959.89	9.82	36.08
-% Herta	3/2/1990	1.5bn	Belgium, France, Germany, Netherlands and United Kingdom	33.16	944.78	13.36	15.94
-% Emma	29/2/2008	1.4bn	Austria, Belgium, Czech Repubic, Germany, Netherlands, Poland and Switzerland	25.12	959.46	9.60	12.17
-% Wiebke	28/2/1990	1.4bn	Belgium, France, Germany, Netherlands, Switzerland and United Kingdom	32.24	944.18	7.77	25.16
-% Gero	11/1/2005	0.6bn	Ireland and United Kingdom	39.13	960.64	8.55	17.55
-% Ulli	3/1/2012	0.2bn	United Kingdom	36.32	954.30	10.24	19.02
-% Dagmar (Patrick)	26/12/2011	0.04bn	Finland and Norway	30.08	953.94	8.58	1.77
-
 % prompt for entity if not given
 if isempty(entity),entity=climada_entity_load;end
 if isempty(entity),return;end
