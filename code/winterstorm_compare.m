@@ -1,4 +1,4 @@
-function EDS=winterstorm_compare(entity,compare_damage_functions,compare_hazard_sets)
+function EDS=winterstorm_compare(entity,compare_damage_functions,compare_hazard_sets,compare_scenarios)
 % climada
 % NAME:
 %   winterstorm_compare
@@ -17,27 +17,51 @@ function EDS=winterstorm_compare(entity,compare_damage_functions,compare_hazard_
 %   wind storm losses in current and future climate. Climatic Change (2010)
 %   101:485?514, doi: 10.1007/s10584-009-9712-1.
 %
-%   See also winterstorm_validate
+%   compare_scenarios: show the modeled scenario loss for the events as
+%   defined in the data/validation folder in Database_master_table.xls
+%
+%   See also winterstorm_validate and winterstorm_compare_severity
 % CALLING SEQUENCE:
-%   EDS=winterstorm_compare(entity)
+%   EDS=winterstorm_compare(entity,compare_damage_functions,compare_hazard_sets,compare_scenarios)
 % EXAMPLE:
-%   EDS=winterstorm_compare
+%   EDS=winterstorm_compare('',1,1,1) % run all comparisons, prompt for entity
 % INPUTS:
 %   entity: an encoded entity, see climada_entity_read
 %       > promted for if not given
 % OPTIONAL INPUT PARAMETERS:
 %   compare_damage_functions: if =1, compare damage functions (default)
+%       run 4 times: damage function as in entity, 2 versions with explicit
+%       function and using the standard WS damage function, see
+%       damagefunctions_filename in PARAMETERS in code
 %       =0: omit this
-%   compare_hazard_sets: if =1, compare hazard sets
+%   compare_hazard_sets: if =1, compare hazard sets using the standard
+%       damage function, see damagefunctions_filename in PARAMETERS in code
 %       =0: omit this (default)
+%       =2, use the damage function as in entity, not the standard one
+%       Note that for each damage calculation, the entity is re-encoded (to
+%       be on the safe side)
+%   compare_scenarios: if =1, show modeled scenario losses, using standard
+%       damage function, see damagefunctions_filename in PARAMETERS in code.
+%       See PARAMETERS to define the location and name of the Database_master_table.
+%       =0: omit (default)
+%       =2, use the damage function as in entity, not the standard one
+%       Note that for each damage calculation, the entity is re-encoded (to
+%       be on the safe side)
+%       Note further that compare_scenarios only does not make much sense,
+%       but is permitted, as one might want to overlay scenario results to
+%       an existing DFC plot.
+%       See HARD CHOICE, TO BE REVISED in code, too
+%   compare_severity: if =1, show comparison of storm set severities
+%       see also OUTPUTS: severity_table
 % OUTPUTS:
 %   EDS: the event damage set(s), see climada_EDS_calc
 % MODIFICATION HISTORY:
 % David N. Bresch, david.bresch@gmail.com, 20141121, ICE initial
-% David N. Bresch, david.bresch@gmail.com, 20141128, compare_hazard_sets
+% David N. Bresch, david.bresch@gmail.com, 20141128, compare_hazard_sets, compare_scenarios
 %-
 
 EDS=[]; % init output
+severity_table=[];
 
 global climada_global
 if ~climada_init_vars,return;end % init/import global variables
@@ -48,6 +72,7 @@ if ~climada_init_vars,return;end % init/import global variables
 if ~exist('entity','var'),entity=[];end
 if ~exist('compare_damage_functions','var'),compare_damage_functions=1;end
 if ~exist('compare_hazard_sets','var'),compare_hazard_sets=0;end
+if ~exist('compare_scenarios','var'),compare_scenarios=0;end
 
 module_data_dir=[fileparts(fileparts(mfilename('fullpath'))) filesep 'data'];
 
@@ -58,6 +83,14 @@ unique_DamageFunID=1234; % a kind of unique ID, unlikely to exist
 hazard_set_folder=[module_data_dir filesep 'hazards'];
 hazard_set_files={'WS_ECHAM_CTL','WS_ETHC_CTL','WS_GKSS_CTL','WS_ERA40'};
 reference_hazard_set='/Users/bresch/Documents/ETH_lecture/climada_LOCAL/modules/_non_modules/WS_Europe/WSEU_A_Probabilistic.mat';
+%
+Database_master_table_file=[module_data_dir filesep 'validation' filesep 'Database_master_table.xls'];
+%
+damagefunctions_filename=[module_data_dir filesep 'entities' filesep 'WS_Europe.xls'];
+%
+save_hazard_flag=1; % default=1 for speedup, see winterstorm_scenario_hazard
+n_largest_storms=[]; % to limit the storms to compare with to the n largest (defalt=0, all available)
+
 
 % prompt for entity if not given
 if isempty(entity),entity=climada_entity_load;end
@@ -83,6 +116,8 @@ force_re_encoding=0; % default=0
 next_EDS=1; % init
 
 if compare_damage_functions
+    
+    fprintf('compare damage functions:\n');
     
     WS_hazard_event_set_file=[climada_global.data_dir filesep 'hazards' filesep deblank(entity.assets.filename) '_WS_Europe.mat'];
     
@@ -111,22 +146,14 @@ if compare_damage_functions
             force_re_encoding=1;
         end
     else
-        fprintf('WARNING: assets not encoded to hazard centroids\n');
+        fprintf('WARNING: assets not encoded to hazard centroids -> re-encoding\n');
         force_re_encoding=1; % sure to re-encode, not even vector lengths match
     end
     
-    if force_re_encoding
-        fprintf('re-encoding hazard to the respective centroids\n');
-        assets = climada_assets_encode(entity.assets,hazard);
-        entity=rmfield(entity,'assets');
-        entity.assets=assets; % assign re-encoded assets
-    end
-    
-    EDS=climada_EDS_calc(entity,hazard);
-    EDS.annotation_name='Default';
+    EDS=climada_EDS_calc(entity,hazard,'entities'' damage fun',force_re_encoding);
     next_EDS=2;
     
-    for test_i=1:2
+    for test_i=1:3
         
         if test_i==1
             % with damage function as derived based on DWD gust data
@@ -136,25 +163,35 @@ if compare_damage_functions
             % with damage function as derived based on Euro Tempest gust data
             MDR_exp=0.2493;
             annotation_name='EuroTempest';
+        elseif test_i==3
+            MDR_exp=[]; % to signal we do not need to calculate
+            entity.assets.DamageFunID=entity.assets.DamageFunID*0+1;
+            % read WS Europe default damagefunction and replace in entity
+            [~,entity]=climada_damagefunctions_read(damagefunctions_filename,entity);
+            annotation_name='default';
         end
         
-        % calculate the damage function
-        entity.assets.DamageFunID=entity.assets.DamageFunID*0+unique_DamageFunID;
-        Intensity=0:2:100;
-        MDR=0.00000001*exp(MDR_exp*Intensity);
-        MDR=min(MDR,1);
-        
-        % switch damage function
-        entity.damagefunctions.DamageFunID=Intensity*0+unique_DamageFunID;
-        entity.damagefunctions.Intensity=Intensity;
-        entity.damagefunctions.MDD=MDR;
-        entity.damagefunctions.PAA=Intensity*0+1;
-        entity.damagefunctions.MDR=MDR;
-        if isfield(entity.damagefunctions,'peril_ID'),entity.damagefunctions=rmfield(entity.damagefunctions,'peril_ID');end
+        if ~isempty(MDR_exp)
+            % calculate the damage function
+            entity.assets.DamageFunID=entity.assets.DamageFunID*0+unique_DamageFunID;
+            Intensity=0:2:100;
+            MDR=0.00000001*exp(MDR_exp*Intensity);
+            MDR=min(MDR,1);
+            PAA=Intensity*0+1;
+            MDD=MDR./PAA;
+            
+            entity=rmfield(entity,'damagefunctions'); % remove
+            % define damage function:
+            entity.damagefunctions.DamageFunID=Intensity*0+unique_DamageFunID;
+            entity.damagefunctions.Intensity=Intensity;
+            entity.damagefunctions.MDD=MDD;
+            entity.damagefunctions.PAA=PAA;
+            entity.damagefunctions.MDR=MDR;
+            entity.damagefunctions.filename=annotation_name;
+        end
         
         % calculate EDS
-        EDS(next_EDS)=climada_EDS_calc(entity,hazard);
-        EDS(next_EDS).annotation_name=annotation_name;
+        EDS(next_EDS)=climada_EDS_calc(entity,hazard,annotation_name);
         next_EDS=next_EDS+1;
         
     end % test_i
@@ -162,6 +199,16 @@ if compare_damage_functions
 end % compare_damage_functions
 
 if compare_hazard_sets
+    
+    fprintf('compare %i hazard event sets:\n',length(hazard_set_files)+1);
+    
+    if compare_hazard_sets==1
+        % make sure we run with default damage function
+        [~,entity]=climada_damagefunctions_read(damagefunctions_filename,entity);
+        fprintf('NOTE: analysis run with default damage function (%s)\n',damagefunctions_filename);
+    elseif compare_hazard_sets==2
+        fprintf('NOTE: analysis run with entities'' damage function\n');
+    end
     
     if exist(reference_hazard_set,'file')
         fprintf('reference\n');
@@ -183,6 +230,70 @@ if compare_hazard_sets
     
 end % compare_hazard_sets
 
-climada_EDS_DFC(EDS,'',1);
+if compare_hazard_sets || compare_damage_functions
+    climada_EDS_DFC(EDS,'',1);
+end
+
+if compare_scenarios
+    
+    % read the master table with storm names and dates
+    Database_master_table=climada_spreadsheet_read('no',Database_master_table_file,'table',1);
+    
+    n_storms=length(Database_master_table.Storm);
+    
+    if ~isempty(n_largest_storms),n_storms=min(n_storms,n_largest_storms);end
+    
+    fprintf('comparing with %i storms:\n',n_storms);
+    
+    if compare_scenarios==1
+        % make sure we run with default damage function
+        [~,entity]=climada_damagefunctions_read(damagefunctions_filename,entity);
+        fprintf('NOTE: analysis run with default damage function (%s)\n',damagefunctions_filename);
+    elseif compare_scenarios==2
+        fprintf('NOTE: analysis run with entities'' damage function\n');
+    end
+    
+    local_re_encoding=1; % see below
+    for storm_i=1:n_storms
+        
+        storm_data_filename=[module_data_dir filesep 'validation' filesep Database_master_table.Storm{storm_i} '_biasMean.csv'];
+        
+        % generate the single event hazard set
+        hazard=winterstorm_scenario_hazard(storm_data_filename,0,save_hazard_flag);
+        
+        % ***************************************************************
+        hazard.intensity=3*hazard.intensity; % HARD CHOICE, TO BE REVISED
+        % ***************************************************************
+        
+        if ~isempty(hazard)
+            
+            if local_re_encoding % to avoid re-encoding each time
+                entity=climada_assets_encode(entity,hazard);
+                local_re_encoding=0;
+            end
+            
+            [~,scenario_name]=fileparts(storm_data_filename);
+            scenario_name=strrep(scenario_name,'_',' ');
+            scenario_name=strrep(scenario_name,'biasMean','');
+            fprintf('%s\n',scenario_name);
+            
+            % calculate scenario loss
+            single_EDS=climada_EDS_calc(entity,hazard,scenario_name,0);
+            scenario_damage_pct=single_EDS.ED/single_EDS.Value; % since we show DFC with Percentage_Of_Value_Flag
+            
+            % add to plot
+            hold on;
+            XLim = get(get(gcf,'CurrentAxes'),'XLim');
+            %YLim = get(get(gcf,'CurrentAxes'),'YLim');
+            plot(XLim,[scenario_damage_pct scenario_damage_pct],'-r');
+            text(XLim(1),scenario_damage_pct,scenario_name);
+            
+        end % ~isempty(hazard)
+    end % storm_i
+    
+end % compare_scenarios
+
+title(entity.assets.filename);
+hold off
 
 return

@@ -82,7 +82,7 @@ plot_gust_field=0; % =1
 entity_check_plot=0; % =0
 %
 % whether we save the single-event (storm) hazard event sets
-save_hazard_flag=0; % =0
+save_hazard_flag=1; % default=1 (faster)
 
 % read the master table with storm names, dates, loss and affected
 % countries:
@@ -91,12 +91,6 @@ Value_table=climada_spreadsheet_read('no',Database_master_table_file,'Value',1);
 % contains: Storm,Year,Month,Day,Insured_loss,Affected_countries...
 Database_master_table.assets=Value_table;
 Database_master_table.assets.assets_multiplier=Database_master_table.assets.Value*0; % init
-
-% read the grid on which all hust fields are stored
-RAW = textread(grid_locations_filename,'','delimiter',',','emptyvalue',NaN,'headerlines',1);
-grid.grid_number=RAW(:,1)';
-grid.Longitude=RAW(:,2)';
-grid.Latitude=RAW(:,3)';
 
 % read the damagefunctions
 damagefunctions=climada_damagefunctions_read(damagefunctions_filename);
@@ -121,49 +115,12 @@ for storm_i=1:n_storms
     % read the storm gust field
     storm_data_filename=[module_data_dir filesep 'validation' filesep Database_master_table.Storm{storm_i} '_biasMean.csv'];
     if exist(storm_data_filename,'file')
-        RAW = textread(storm_data_filename,'','delimiter',',','emptyvalue',NaN);
-        Storm.grid_number=RAW(:,1)';
-        Storm.gust=RAW(:,2)';
         
-        if length(Storm.grid_number)==length(grid.grid_number) && sum(Storm.grid_number-grid.grid_number)==0
-            Storm.Longitude=grid.Longitude;
-            Storm.Latitude=grid.Latitude;
-        else
-            fprintf('ERROR: storm needs to be gridded, not implemeted yet --> storm skipped\n');
-        end
+        % generate the single event hazard set
+        % ------------------------------------
+        hazard=winterstorm_scenario_hazard(storm_data_filename,plot_gust_field,save_hazard_flag);
         
-        if isfield(Storm,'Longitude')
-            
-            if plot_gust_field
-                % plot the gust field
-                climada_color_plot(Storm.gust,Storm.Longitude,Storm.Latitude,...
-                    Database_master_table.Storm{storm_i},...
-                    Database_master_table.Storm{storm_i},'','','',0);
-            end
-            
-            % create temporary hazard set
-            % ---------------------------
-            
-            hazard.comment=sprintf('WSEU event, generated in %s',mfilename);
-            hazard.peril_ID='WSEU';
-            hazard.date=datestr(now);
-            hazard.lat=Storm.Latitude;
-            hazard.lon=Storm.Longitude;
-            hazard.event_count=1;
-            hazard.orig_event_flag=1;
-            hazard.frequency=1;
-            hazard.event_ID=1;
-            hazard.orig_years=1;
-            hazard.matrix_density=1;
-            hazard.centroid_ID=1:length(hazard.lon);
-            hazard.filename=storm_data_filename;
-            hazard.intensity=Storm.gust;
-            
-            if save_hazard_flag
-                storm_save_filename=strrep(storm_data_filename,'.csv','.mat');
-                fprintf('saving %s\n',storm_save_filename);
-                save(storm_save_filename,'hazard');
-            end
+        if ~isempty(hazard)
             
             % figure which country entities we need
             countries=strsplit(Database_master_table.Affected_countries{storm_i},',');
@@ -272,11 +229,11 @@ for storm_i=1:n_storms
                 fprintf(' damage %2.3f bn USD\n',EDS_one.ED/1e9);
                 
             end % country_i
-        end
+        end % ~isempty(hazard)
         
     else
         fprintf('ERROR: gust file %s not found, skipped\n',storm_data_filename);
-    end
+    end % exist(storm_data_filename,'file')
     
     Database_master_table.Modeled_damage(storm_i)=Modeled_damage;
     fprintf('  modeled %s damage %2.3f bn USD\n',...
@@ -290,8 +247,6 @@ for storm_i=1:n_storms
     bar_chart_label{storm_i}=Database_master_table.Storm{storm_i};
     
 end % storm_i
-
-return
 
 Database_master_table.EDS=EDS; % store all EDSs
 Database_master_table.bar_chart_table=bar_chart_table; % pass on
