@@ -21,7 +21,7 @@ function severity=winterstorm_compare_severity(compare_scenarios,plot_linear)
 %       hazard event sets is stored (inspect yourself)
 %       For speedup, the routine saves .mat files with each hazard set's
 %       results in {module_data_dir}/results
-%   plot_linear: if =1, plot linear, otherwise loglog (default)
+%   plot_linear: if =1, plot linear (default), otherwise loglog (=0)
 % MODIFICATION HISTORY:
 % David N. Bresch, david.bresch@gmail.com, 20141128, initial
 %-
@@ -35,7 +35,7 @@ if ~climada_init_vars,return;end % init/import global variables
 
 % poor man's version to check arguments
 if ~exist('compare_scenarios','var'),compare_scenarios=0;end
-if ~exist('plot_linear','var'),plot_linear=0;end
+if ~exist('plot_linear','var'),plot_linear=1;end
 
 module_data_dir=[fileparts(fileparts(mfilename('fullpath'))) filesep 'data'];
 
@@ -43,8 +43,9 @@ module_data_dir=[fileparts(fileparts(mfilename('fullpath'))) filesep 'data'];
 %
 %
 hazard_set_folder=[module_data_dir filesep 'hazards'];
-hazard_set_files={'WS_ECHAM_CTL','WS_ETHC_CTL','WS_GKSS_CTL','WS_ERA40'};
-reference_hazard_set='/Users/bresch/Documents/ETH_lecture/climada_LOCAL/modules/_non_modules/WS_Europe/WSEU_A_Probabilistic.mat';
+hazard_set_files={'WS_ECHAM_CTL','WS_ETHC_CTL','WS_GKSS_CTL','WS_ERA40','WS_Europe'}; % last one the blended one
+reference_hazard_set=[fileparts(fileparts(climada_global.root_dir)) ...
+    filesep 'climada_LOCAL' filesep 'modules' filesep 'WS_Europe_ref' filesep 'WS_reference.mat'];
 %
 Database_master_table_file=[module_data_dir filesep 'validation' filesep 'Database_master_table.xls'];
 %
@@ -127,11 +128,7 @@ if compare_scenarios
         
         % generate the single event hazard set
         hazard=winterstorm_scenario_hazard(storm_data_filename,0,save_hazard_flag);
-        
-        % ***************************************************************
-        % hazard.intensity=3*hazard.intensity; % HARD CHOICE, TO BE REVISED
-        % ***************************************************************
-        
+                
         if ~isempty(hazard)
             
             [~,scenario_name]=fileparts(storm_data_filename);

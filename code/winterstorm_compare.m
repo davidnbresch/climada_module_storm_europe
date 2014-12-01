@@ -19,12 +19,16 @@ function EDS=winterstorm_compare(entity,compare_damage_functions,compare_hazard_
 %
 %   compare_scenarios: show the modeled scenario loss for the events as
 %   defined in the data/validation folder in Database_master_table.xls
+%   WARNING: does not make much sense, since the scenario hazard intensity
+%   is not calibrated with the hazard intensities in the hazard event sets
+%   based on Schwierz et al. Code just kept for reference.
 %
 %   See also winterstorm_validate and winterstorm_compare_severity
 % CALLING SEQUENCE:
 %   EDS=winterstorm_compare(entity,compare_damage_functions,compare_hazard_sets,compare_scenarios)
 % EXAMPLE:
-%   EDS=winterstorm_compare('',1,1,1) % run all comparisons, prompt for entity
+%   EDS=winterstorm_compare('',1,1) % run damage function and hazard set
+%       comparisons
 % INPUTS:
 %   entity: an encoded entity, see climada_entity_read
 %       > promted for if not given
@@ -42,7 +46,9 @@ function EDS=winterstorm_compare(entity,compare_damage_functions,compare_hazard_
 %       be on the safe side)
 %   compare_scenarios: if =1, show modeled scenario losses, using standard
 %       damage function, see damagefunctions_filename in PARAMETERS in code.
-%       See PARAMETERS to define the location and name of the Database_master_table.
+%       See PARAMETERS to define the location and name of the
+%       Database_master_table. WARNING: results do not make much sense,
+%       since scenario hazard intensities are not calibrated.
 %       =0: omit (default)
 %       =2, use the damage function as in entity, not the standard one
 %       Note that for each damage calculation, the entity is re-encoded (to
@@ -50,14 +56,12 @@ function EDS=winterstorm_compare(entity,compare_damage_functions,compare_hazard_
 %       Note further that compare_scenarios only does not make much sense,
 %       but is permitted, as one might want to overlay scenario results to
 %       an existing DFC plot.
-%       See HARD CHOICE, TO BE REVISED in code, too
-%   compare_severity: if =1, show comparison of storm set severities
-%       see also OUTPUTS: severity_table
 % OUTPUTS:
 %   EDS: the event damage set(s), see climada_EDS_calc
 % MODIFICATION HISTORY:
 % David N. Bresch, david.bresch@gmail.com, 20141121, ICE initial
 % David N. Bresch, david.bresch@gmail.com, 20141128, compare_hazard_sets, compare_scenarios
+% David N. Bresch, david.bresch@gmail.com, 20141201, WARNING for compare_scenarios added
 %-
 
 EDS=[]; % init output
@@ -81,8 +85,9 @@ module_data_dir=[fileparts(fileparts(mfilename('fullpath'))) filesep 'data'];
 unique_DamageFunID=1234; % a kind of unique ID, unlikely to exist
 %
 hazard_set_folder=[module_data_dir filesep 'hazards'];
-hazard_set_files={'WS_ECHAM_CTL','WS_ETHC_CTL','WS_GKSS_CTL','WS_ERA40'};
-reference_hazard_set='/Users/bresch/Documents/ETH_lecture/climada_LOCAL/modules/_non_modules/WS_Europe/WSEU_A_Probabilistic.mat';
+hazard_set_files={'WS_ECHAM_CTL','WS_ETHC_CTL','WS_GKSS_CTL','WS_ERA40','WS_Europe'}; % last one the blended one
+reference_hazard_set=[fileparts(fileparts(climada_global.root_dir)) ...
+    filesep 'climada_LOCAL' filesep 'modules' filesep 'WS_Europe_ref' filesep 'WS_reference.mat'];
 %
 Database_master_table_file=[module_data_dir filesep 'validation' filesep 'Database_master_table.xls'];
 %
@@ -219,10 +224,15 @@ if compare_hazard_sets
     end
     
     for hazard_i=1:length(hazard_set_files)
-        hazard_set_file=[hazard_set_folder filesep hazard_set_files{hazard_i}];
+        hazard_set_file=[hazard_set_folder filesep hazard_set_files{hazard_i} '.mat'];
         hazard_set_short=strrep(hazard_set_files{hazard_i},'WS_','');
         fprintf('%s\n',hazard_set_short);
-        load(hazard_set_file)
+        if ~exist(hazard_set_file,'file')
+            % try, generate the blended WS_Europe hazard set first
+            hazard=winterstorm_blend_hazard_event_sets;
+        else
+            load(hazard_set_file)
+        end
         EDS(next_EDS)=climada_EDS_calc(entity,hazard,hazard_set_short,1); % force re-encoding
         next_EDS=next_EDS+1;
     end % hazard_i
@@ -235,7 +245,7 @@ if compare_hazard_sets || compare_damage_functions
 end
 
 if compare_scenarios
-    
+        
     % read the master table with storm names and dates
     Database_master_table=climada_spreadsheet_read('no',Database_master_table_file,'table',1);
     
@@ -244,6 +254,7 @@ if compare_scenarios
     if ~isempty(n_largest_storms),n_storms=min(n_storms,n_largest_storms);end
     
     fprintf('comparing with %i storms:\n',n_storms);
+    fprintf('WARNING: results do not make much sense, since scenario hazard intensities are not calibrated\n');
     
     if compare_scenarios==1
         % make sure we run with default damage function
@@ -260,11 +271,7 @@ if compare_scenarios
         
         % generate the single event hazard set
         hazard=winterstorm_scenario_hazard(storm_data_filename,0,save_hazard_flag);
-        
-        % ***************************************************************
-        hazard.intensity=3*hazard.intensity; % HARD CHOICE, TO BE REVISED
-        % ***************************************************************
-        
+                
         if ~isempty(hazard)
             
             if local_re_encoding % to avoid re-encoding each time

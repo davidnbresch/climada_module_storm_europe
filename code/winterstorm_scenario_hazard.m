@@ -20,6 +20,8 @@ function hazard=winterstorm_scenario_hazard(storm_data_filename,plot_gust_field,
 %   save_hazard_flag: if =1, save as single hazard event set (default=0)
 %       on subsequent calls, the hazard is read from this file, rather than
 %       re-created (hence delete the .mat file to re-create from .csv).
+%       If =2, force re-creation of the .mat file, i.e. re-read from the
+%       .csv file and create the scenario hazard set again
 % OUTPUTS:
 %   hazard: a single hazard event set
 %       if save_hazard_flag=1, stored as climada hazard event set (with
@@ -48,7 +50,7 @@ module_data_dir=[fileparts(fileparts(mfilename('fullpath'))) filesep 'data'];
 % define the fil with the grid definiton (grid location, longitude, latitude)
 grid_locations_filename=[module_data_dir filesep 'validation' filesep 'grid_locations.csv'];
 
-% prompt for param1 if not given
+% prompt for storm_data_filename if not given
 if isempty(storm_data_filename) % local GUI
     storm_data_filename=[module_data_dir filesep 'validation' filesep '*.csv'];
     [filename, pathname] = uigetfile(storm_data_filename, 'Select single storm data:');
@@ -61,7 +63,7 @@ end
 
 storm_save_filename=strrep(storm_data_filename,'.csv','.mat');
 
-if exist(storm_save_filename,'file')
+if exist(storm_save_filename,'file') && save_hazard_flag<2
     load(storm_save_filename);
 elseif exist(storm_data_filename,'file')
     
