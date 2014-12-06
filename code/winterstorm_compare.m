@@ -24,6 +24,7 @@ function EDS=winterstorm_compare(entity,compare_damage_functions,compare_hazard_
 %   based on Schwierz et al. Code just kept for reference.
 %
 %   See also winterstorm_validate and winterstorm_compare_severity
+%   See also climada_DFC_compare in core climada
 % CALLING SEQUENCE:
 %   EDS=winterstorm_compare(entity,compare_damage_functions,compare_hazard_sets,compare_scenarios)
 % EXAMPLE:

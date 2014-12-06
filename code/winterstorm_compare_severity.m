@@ -6,6 +6,7 @@ function severity=winterstorm_compare_severity(compare_scenarios,plot_linear)
 %   Compare the hazard severity of different hazard sets
 %
 %   See also winterstorm_compare
+%   See also climada_DFC_compare in core climada
 % CALLING SEQUENCE:
 %   severity=winterstorm_compare_severity(compare_scenarios)
 % EXAMPLE:

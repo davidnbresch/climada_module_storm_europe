@@ -1,4 +1,4 @@
-function hazard=winterstorm_blend_hazard_event_sets
+function hazard=winterstorm_blend_hazard_event_sets(hazard_save_file,frequency_screw)
 % climada
 % NAME:
 %   winterstorm_blend_hazard_event_sets
@@ -13,16 +13,24 @@ function hazard=winterstorm_blend_hazard_event_sets
 %
 %   See also winterstorm_compare and winterstorm_compare_severity
 % CALLING SEQUENCE:
-%   hazard=winterstorm_blend_hazard_event_sets
+%   hazard=winterstorm_blend_hazard_event_sets(hazard_save_file,frequency_screw)
 % EXAMPLE:
-%   hazard=winterstorm_blend_hazard_event_sets
+%   hazard=winterstorm_blend_hazard_event_sets('WS_Europe_blend.mat',0.9)
 % INPUTS:
 % OPTIONAL INPUT PARAMETERS:
+%   hazard_save_file: the filename (w/o path) of the blended output file
+%       It is always stored in the same folder as the files it is blended
+%       from, e.g. only a filename, such as 'WS_Europe_blend.mat'.
+%   frequency_screw: an EXPERIMENTAL multiplier for the frequency, just
+%       multiplies all single event frequencies. Default=1 (obviously)
+%       (Can be justified to adjust, due to the fact that we blend hazard
+%       sets, an adjustment accounts for especially smaller scale events) 
 % OUTPUTS:
 %   hazard: the blended hazard event set, usually named WS_Europe.mat, see
-%   hazard_save_file in PARAMETERS
+%       optional input parameter hazard_save_file
 % MODIFICATION HISTORY:
 % David N. Bresch, david.bresch@gmail.com, 20141201, initial
+% David N. Bresch, david.bresch@gmail.com, 20141206, frequency_screw added
 %-
 
 hazard=[]; % init output
@@ -30,6 +38,9 @@ hazard_blend=[];
 
 %global climada_global
 if ~climada_init_vars,return;end % init/import global variables
+
+if ~exist('frequency_screw','var'),frequency_screw=1;end % default=1
+if ~exist('hazard_save_file','var'),hazard_save_file='';end % default=1
 
 %%if climada_global.verbose_mode,fprintf('*** %s ***\n',mfilename);end % show routine name on stdout
 
@@ -39,12 +50,11 @@ module_data_dir=[fileparts(fileparts(mfilename('fullpath'))) filesep 'data'];
 %
 hazard_set_folder=[module_data_dir filesep 'hazards'];
 hazard_set_files={'WS_ECHAM_CTL','WS_ETHC_CTL','WS_GKSS_CTL','WS_ERA40'};
-hazard_save_file=[hazard_set_folder filesep 'WS_Europe.mat'];
-%
-% define the frequency correction (due to the fact that we blend hazard
-% sets, an djustments accounts for especially smaller scale events)
-frequency_screw=1.5;
-
+if isempty(hazard_save_file)
+    hazard_save_file=[hazard_set_folder filesep 'WS_Europe2.mat'];
+else
+    hazard_save_file=[hazard_set_folder filesep hazard_save_file];
+end
 
 for file_i=1:length(hazard_set_files)
     hazard_set_file=[hazard_set_folder filesep hazard_set_files{file_i} '.mat'];
@@ -74,10 +84,11 @@ for file_i=1:length(hazard_set_files)
 end % file
 
 hazard_blend.frequency=hazard_blend.frequency/hazard_blend.hazard_count*frequency_screw;
+hazard_blend.frequency_screw_applied=frequency_screw;
 
 hazard=hazard_blend;
 hazard.intensity(hazard.intensity<15)=0;
-hazard.intensity=sparse(hazard.intensity);
+hazard.intensity=sparse(hazard.intensity); % sparsify again, to be safe
 hazard.matrix_density = nnz(hazard.intensity)/numel(hazard.intensity);
 
 save(hazard_save_file,'hazard');
