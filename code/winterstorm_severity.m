@@ -24,6 +24,7 @@ function severity=winterstorm_severity(hazard,check_plot)
 %       frequency: the event frequency
 % MODIFICATION HISTORY:
 % David N. Bresch, david.bresch@gmail.com, 20141128, initial
+% David N. Bresch, david.bresch@gmail.com, 20141212, compatible with new admin0.mat
 %-
 
 severity=[]; % init output
@@ -42,10 +43,12 @@ country_risk_dir=[fileparts(fileparts(which('country_admin1_risk_calc'))) filese
 
 % PARAMETERS
 %
+% since 20141212: admin0.mat is core climada's shape file
+admin0_shape_file=climada_global.map_border_file;
 % admin0 shape file (a file in the climada module country_risk (see
 % https://github.com/davidnbresch/climada_module_country_risk)
-admin0_shape_file=[country_risk_dir filesep 'ne_10m_admin_0_countries'...
-    filesep 'ne_10m_admin_0_countries.shp'];
+%admin0_shape_file=[country_risk_dir filesep 'ne_10m_admin_0_countries'...
+%    filesep 'ne_10m_admin_0_countries.shp'];
 %
 % define the countries we would like to calculate the severity for
 country_list={'Belgium','Switzerland','Germany','Denmark','France','United Kingdom','Austria','Netherlands','Ireland'};
@@ -73,7 +76,8 @@ if exist(admin0_shape_file,'file')
     n_shapes=length(shapes);
 else
     fprintf('ERROR: admin0 shape file %s not found, aborted\n',admin0_shape_file);
-    fprintf('download www.naturalearthdata.com/http//www.naturalearthdata.com/download/10m/cultural/ne_10m_admin_0_countries.zip\n');
+    fprintf('> try running climada_plot_world_borders first (and follow instructions there)\n');
+    fprintf('OR: download www.naturalearthdata.com/http//www.naturalearthdata.com/download/10m/cultural/ne_10m_admin_0_countries.zip\n');
     fprintf('and store in data dir of the climada country_risk module (install module first)\n');
     return
 end

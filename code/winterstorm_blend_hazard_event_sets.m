@@ -1,12 +1,14 @@
 function hazard=winterstorm_blend_hazard_event_sets(hazard_save_file,frequency_screw)
 % climada
+% MODULE:
+%   ws_europe
 % NAME:
 %   winterstorm_blend_hazard_event_sets
 % PURPOSE:
 %   Blend the four WS hazard events sets into one, see PARAMETERS in code
 %
 %   Hazard sets from:
-%   Schwierz, C., P. K?llner-Heck, E. Zenklusen Mutter, D. N. Bresch,
+%   Schwierz, C., P. Koellner-Heck, E. Zenklusen Mutter, D. N. Bresch,
 %   P.-L.Vidale, M. Wild, C., and Sch?r, 2010: Modelling European winter
 %   wind storm losses in current and future climate. Climatic Change (2010)
 %   101:485?514, doi: 10.1007/s10584-009-9712-1.
