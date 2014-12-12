@@ -69,7 +69,7 @@ end
 % get the admin0 boundaries
 if exist(admin0_shape_file,'file')
     %fprintf('reading admin0 boundaries\n');
-    shapes=shaperead(admin0_shape_file); % read the admin0 shapes
+    shapes=climada_shaperead(admin0_shape_file); % read the admin0 shapes
     n_shapes=length(shapes);
 else
     fprintf('ERROR: admin0 shape file %s not found, aborted\n',admin0_shape_file);
