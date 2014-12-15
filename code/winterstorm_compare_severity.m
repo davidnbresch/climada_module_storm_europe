@@ -42,9 +42,9 @@ module_data_dir=[fileparts(fileparts(mfilename('fullpath'))) filesep 'data'];
 
 % PARAMETERS
 %
-%
 hazard_set_folder=[module_data_dir filesep 'hazards'];
-hazard_set_files={'WS_ECHAM_CTL','WS_ETHC_CTL','WS_GKSS_CTL','WS_ERA40','WS_Europe','WS_Europe_blend'}; % last one the blended one
+%hazard_set_files={'WS_ECHAM_CTL','WS_ETHC_CTL','WS_GKSS_CTL','WS_ERA40','WS_Europe'}; % last one the blended one
+hazard_set_files={'WS_ECHAM_CTL','WS_ETHC_CTL','WS_GKSS_CTL','WS_ERA40','WS_Europe_blend'}; % last one the blended one
 reference_hazard_set=[fileparts(fileparts(climada_global.root_dir)) ...
     filesep 'climada_LOCAL' filesep 'modules' filesep 'WS_Europe_ref' filesep 'WS_reference.mat'];
 %

@@ -1,4 +1,4 @@
-function hazard=winterstorm_blend_hazard_event_sets(hazard_save_file,frequency_screw)
+function hazard=winterstorm_blend_hazard_event_sets(hazard_save_file,frequency_screw,intensity_screw)
 % climada
 % MODULE:
 %   ws_europe
@@ -27,12 +27,14 @@ function hazard=winterstorm_blend_hazard_event_sets(hazard_save_file,frequency_s
 %       multiplies all single event frequencies. Default=1 (obviously)
 %       (Can be justified to adjust, due to the fact that we blend hazard
 %       sets, an adjustment accounts for especially smaller scale events) 
+%   intensity_screw: scale intensity with, default=1
 % OUTPUTS:
 %   hazard: the blended hazard event set, usually named WS_Europe.mat, see
 %       optional input parameter hazard_save_file
 % MODIFICATION HISTORY:
 % David N. Bresch, david.bresch@gmail.com, 20141201, initial
 % David N. Bresch, david.bresch@gmail.com, 20141206, frequency_screw added
+% David N. Bresch, david.bresch@gmail.com, 20141213, intensity_screw added
 %-
 
 hazard=[]; % init output
@@ -41,8 +43,9 @@ hazard_blend=[];
 %global climada_global
 if ~climada_init_vars,return;end % init/import global variables
 
+if ~exist('hazard_save_file','var'),hazard_save_file='';end
 if ~exist('frequency_screw','var'),frequency_screw=1;end % default=1
-if ~exist('hazard_save_file','var'),hazard_save_file='';end % default=1
+if ~exist('intensity_screw','var'),intensity_screw=1;end % default=1
 
 %%if climada_global.verbose_mode,fprintf('*** %s ***\n',mfilename);end % show routine name on stdout
 
@@ -90,7 +93,9 @@ hazard_blend.frequency_screw_applied=frequency_screw;
 
 hazard=hazard_blend;
 hazard.intensity(hazard.intensity<15)=0;
-hazard.intensity=sparse(hazard.intensity); % sparsify again, to be safe
+% apply intensity_screw after cutoff, in order to allow for 'turn back' without loosing events
+hazard.intensity=sparse(hazard.intensity)*intensity_screw; % sparsify again, to be safe
+hazard.intensity_screw_applied=intensity_screw;
 hazard.matrix_density = nnz(hazard.intensity)/numel(hazard.intensity);
 
 save(hazard_save_file,'hazard');
