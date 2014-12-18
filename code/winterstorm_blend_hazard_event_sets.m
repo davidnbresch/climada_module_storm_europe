@@ -56,7 +56,7 @@ module_data_dir=[fileparts(fileparts(mfilename('fullpath'))) filesep 'data'];
 hazard_set_folder=[module_data_dir filesep 'hazards'];
 hazard_set_files={'WS_ECHAM_CTL','WS_ETHC_CTL','WS_GKSS_CTL','WS_ERA40'};
 if isempty(hazard_save_file)
-    hazard_save_file=[hazard_set_folder filesep 'WS_Europe2.mat'];
+    hazard_save_file=[hazard_set_folder filesep 'WS_Europe.mat'];
 else
     hazard_save_file=[hazard_set_folder filesep hazard_save_file];
 end
