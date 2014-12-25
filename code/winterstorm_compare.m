@@ -193,7 +193,6 @@ if compare_damage_functions
             entity.damagefunctions.Intensity=Intensity;
             entity.damagefunctions.MDD=MDD;
             entity.damagefunctions.PAA=PAA;
-            entity.damagefunctions.MDR=MDR;
             entity.damagefunctions.filename=annotation_name;
         end
         
