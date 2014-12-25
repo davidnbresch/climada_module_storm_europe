@@ -25,6 +25,7 @@ function severity=winterstorm_compare_severity(compare_scenarios,plot_linear)
 %   plot_linear: if =1, plot linear (default), otherwise loglog (=0)
 % MODIFICATION HISTORY:
 % David N. Bresch, david.bresch@gmail.com, 20141128, initial
+% David N. Bresch, david.bresch@gmail.com, 20141223, folders moved
 %-
 
 severity=[];
@@ -46,7 +47,7 @@ hazard_set_folder=[module_data_dir filesep 'hazards'];
 %hazard_set_files={'WS_ECHAM_CTL','WS_ETHC_CTL','WS_GKSS_CTL','WS_ERA40','WS_Europe'}; % last one the blended one
 hazard_set_files={'WS_ECHAM_CTL','WS_ETHC_CTL','WS_GKSS_CTL','WS_ERA40','WS_Europe_blend'}; % last one the blended one
 reference_hazard_set=[fileparts(fileparts(climada_global.root_dir)) ...
-    filesep 'climada_LOCAL' filesep 'modules' filesep 'WS_Europe_ref' filesep 'WS_reference.mat'];
+    filesep 'material' filesep 'climada_LOCAL' filesep 'WS_Europe_ref' filesep 'WS_reference.mat'];
 %
 Database_master_table_file=[module_data_dir filesep 'validation' filesep 'Database_master_table.xls'];
 %

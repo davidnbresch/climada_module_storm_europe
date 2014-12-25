@@ -63,6 +63,7 @@ function EDS=winterstorm_compare(entity,compare_damage_functions,compare_hazard_
 % David N. Bresch, david.bresch@gmail.com, 20141121, ICE initial
 % David N. Bresch, david.bresch@gmail.com, 20141128, compare_hazard_sets, compare_scenarios
 % David N. Bresch, david.bresch@gmail.com, 20141201, WARNING for compare_scenarios added
+% David N. Bresch, david.bresch@gmail.com, 20141223, LOCAL folders moved
 %-
 
 EDS=[]; % init output
@@ -88,7 +89,7 @@ unique_DamageFunID=1234; % a kind of unique ID, unlikely to exist
 hazard_set_folder=[module_data_dir filesep 'hazards'];
 hazard_set_files={'WS_ECHAM_CTL','WS_ETHC_CTL','WS_GKSS_CTL','WS_ERA40','WS_Europe'}; % last one the blended one
 reference_hazard_set=[fileparts(fileparts(climada_global.root_dir)) ...
-    filesep 'climada_LOCAL' filesep 'modules' filesep 'WS_Europe_ref' filesep 'WS_reference.mat'];
+    filesep 'material' filesep 'climada_LOCAL' filesep 'WS_Europe_ref' filesep 'WS_reference.mat'];
 %
 Database_master_table_file=[module_data_dir filesep 'validation' filesep 'Database_master_table.xls'];
 %
