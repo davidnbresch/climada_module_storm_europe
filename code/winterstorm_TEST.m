@@ -39,7 +39,7 @@ if ~exist(WS_hazard_file,'file'),fprintf('ERROR: hazard set file not found: %s\n
 
 entity_save_file=strrep(WS_entity_file,'.xls','.mat'); % figure name of the encoded entity file
 if ~exist(entity_save_file,'file')
-    [WS_entity hazard entity_save_file] =climada_entity_read(WS_entity_file,WS_hazard_file);
+    entity = climada_entity_read(WS_entity_file,WS_hazard_file);
 else
     fprintf('%s already exists, delete to re-test\n',entity_save_file);
     load(entity_save_file)
