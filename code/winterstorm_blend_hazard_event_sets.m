@@ -68,6 +68,7 @@ for file_i=1:length(hazard_set_files)
         fprintf('adding %s\n',hazard_set_files{file_i});
         
         load(hazard_set_file);
+        hazard=climada_hazard2octave(hazard); % Octave compatibility for -v7.3 mat-files
         
         if isempty(hazard_blend)
             hazard_blend=hazard;

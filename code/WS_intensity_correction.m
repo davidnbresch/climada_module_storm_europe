@@ -54,7 +54,8 @@ for hazard_i=1:length(hazard_set_files)
     hazard_set_short=strrep(hazard_set_files{hazard_i},'WS_','');
     fprintf('%s:\n',hazard_set_short);
     load(hazard_set_file)
-    
+    hazard=climada_hazard2octave(hazard); % Octave compatibility for -v7.3 mat-files
+
     if isfield(hazard,'intensity_comment')
         fprintf('on file: %s (%2.2f)\n',hazard.intensity_comment,hazard_set_factors(hazard_i));
         hazard.intensity=hazard.intensity/hazard_set_factors(hazard_i);
