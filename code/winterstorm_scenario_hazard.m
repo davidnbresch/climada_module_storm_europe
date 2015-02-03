@@ -70,8 +70,8 @@ elseif exist(storm_data_filename,'file')
     % read the grid on which all gust fields are stored
     RAW = textread(grid_locations_filename,'','delimiter',',','emptyvalue',NaN,'headerlines',1);
     grid.grid_number=RAW(:,1)';
-    grid.Longitude=RAW(:,2)';
-    grid.Latitude=RAW(:,3)';
+    grid.lon=RAW(:,2)';
+    grid.lat=RAW(:,3)';
     
     % read the storm gust field
     RAW = textread(storm_data_filename,'','delimiter',',','emptyvalue',NaN);
@@ -79,8 +79,8 @@ elseif exist(storm_data_filename,'file')
     Storm.gust=RAW(:,2)';
     
     if length(Storm.grid_number)==length(grid.grid_number) && sum(Storm.grid_number-grid.grid_number)==0
-        Storm.Longitude=grid.Longitude;
-        Storm.Latitude=grid.Latitude;
+        Storm.lon=grid.lon;
+        Storm.lat=grid.lat;
     else
         fprintf('ERROR: storm needs to be gridded, not implemeted yet --> storm skipped\n');
         return
@@ -93,8 +93,8 @@ elseif exist(storm_data_filename,'file')
         hazard.comment=sprintf('WSEU event, generated in %s',mfilename);
         hazard.peril_ID='WSEU';
         hazard.date=datestr(now);
-        hazard.lat=Storm.Latitude;
-        hazard.lon=Storm.Longitude;
+        hazard.lat=Storm.lat;
+        hazard.lon=Storm.lon;
         hazard.event_count=1;
         hazard.orig_event_flag=1;
         hazard.frequency=1;

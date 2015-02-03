@@ -144,11 +144,11 @@ if compare_damage_functions
     
     % check for entity to be encoded to the hazard event set's centroids
     % in essence, re-encoce if in doubt (as otherwise results might be useless)
-    n_centroids=length(entity.assets.Longitude);
+    n_centroids=length(entity.assets.lon);
     if size(hazard.lon,1)>1,hazard.lon=hazard.lon';hazard.lat=hazard.lat';end % transpose old hazard event sets
     if length(hazard.lon)>=n_centroids
-        if sum(abs(entity.assets.Longitude-hazard.lon(1:n_centroids)))+...
-                sum(abs(entity.assets.Latitude-hazard.lat(1:n_centroids)))>0
+        if sum(abs(entity.assets.lon-hazard.lon(1:n_centroids)))+...
+                sum(abs(entity.assets.lat-hazard.lat(1:n_centroids)))>0
             fprintf('WARNING: assets might not be encoded to hazard centroids\n');
             force_re_encoding=1;
         end
