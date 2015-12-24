@@ -1,5 +1,5 @@
-climada_module_ws_europe
-========================
+climada_module_storm_europe (formerly named climada_module_ws_europe, changed 20151224)
+===========================
 
 European winter storm hazard event set
 
