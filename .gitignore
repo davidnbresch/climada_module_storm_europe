@@ -116,3 +116,5 @@ data/hazards/WS_Europe2.mat
 data/results/Europe_blend_severity.mat
 
 data/results/Europe_severity.mat
+
+.DS_Store
