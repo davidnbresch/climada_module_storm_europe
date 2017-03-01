@@ -14,7 +14,8 @@ function hazard=climada_cosmo2hazard(cosmo_filename,params,entity)
 % EXAMPLE:
 %   p.resolution_km=1;entity=climada_nightlight_entity_load('CHE','',p);
 %   entity=climada_entity_load('CHE_Switzerland_01x01');
-%   climada_cosmo2hazard('',[],entity)
+%   p.focus_region=[4 12 45 49];
+%   climada_cosmo2hazard('DEF',p,entity)
 %   p.asset_markersiz=1;p.schematic_tag=-2,p.npoints=399;
 %   climada_event_damage_animation('',p)
 %
@@ -38,9 +39,7 @@ function hazard=climada_cosmo2hazard(cosmo_filename,params,entity)
 %       >0: use only a few timesteps
 %       abs(.)>1: run movie generation automatically after generating the data
 %    focus_region: the region we're going to show [minlon maxlon minlat maxlat]
-%       default=[], automatically determined by area of entity lat/lon
-%       SPECIAL: if =1, use the region around the tc_track, NOT around the entity
-%       E.g. for Salvador (Lea, 20150220) focus_region = [-91.5 -86 12 15.5];
+%       default=[], automatically determined by area of data lat/lon
 %    hazard_density: the sparse intensity array density, default=.01
 %    damage_cumsum: if =1, store cumulative damage over time, default=0
 %   entity: a climada entity structure, e.g. from entity=climada_entity_load
@@ -52,6 +51,7 @@ function hazard=climada_cosmo2hazard(cosmo_filename,params,entity)
 %       needed for animation generation, i.e. hazard.damage and hazard.assets
 % MODIFICATION HISTORY:
 % David N. Bresch, david.bresch@gmail.com, 20170228, initial
+% David N. Bresch, david.bresch@gmail.com, 20170301, focus region added to hazard
 %-
 
 hazard=[]; % init output
@@ -73,6 +73,7 @@ if ~isfield(params,'hazard_filename'),     params.hazard_filename='';end
 if ~isfield(params,'animation_data'),      params.animation_data='';end
 if ~isfield(params,'test_mode'),           params.test_mode=[];end
 if ~isfield(params,'focus_region'),        params.focus_region=[];end
+if ~isfield(params,'damage_cumsum'),       params.damage_cumsum=[];end
 
 % locate the module's (or this code's) data folder (usually  a folder
 % 'parallel' to the code folder, i.e. in the same level as code folder)
@@ -88,7 +89,8 @@ if isempty(params.damage_threshold),    params.damage_threshold=1000;end % Value
 if isempty(params.hazard_filename),     params.hazard_filename=[climada_global.hazards_dir filesep 'CHE_MeteoSwiss_WS'];end
 if isempty(params.animation_data),      params.animation_data=[climada_global.results_dir filesep 'animation_data'];end
 if isempty(params.test_mode),           params.test_mode=0;end
-if isempty(params.focus_region),        params.focus_region=[4 12 45 48];end
+if isempty(params.focus_region),        params.focus_region=[4 12 45 49];end
+if isempty(params.damage_cumsum),       params.damage_cumsum=0;end
 %
 cosmo_filename_DEF=[climada_global.data_dir filesep 'MeteoSwiss' filesep 'cosmo1_1999122500.nc'];
 
@@ -141,6 +143,7 @@ if ~isempty(params.focus_region)
     inp = inpolygon(hazard.lon,hazard.lat,edges_x,edges_y);
     hazard.lon=hazard.lon(inp);
     hazard.lat=hazard.lat(inp);
+    hazard.focus_region=params.focus_region;
 else
     inp=[];
 end
