@@ -14,9 +14,9 @@ function hazard=climada_cosmo2hazard(cosmo_filename,params,entity)
 % EXAMPLE:
 %   p.resolution_km=1;entity=climada_nightlight_entity_load('CHE','',p);
 %   entity=climada_entity_load('CHE_Switzerland_01x01');
-%   p.focus_region=[4 12 45 49];
+%   p.focus_region=[3 13 45 49];
 %   climada_cosmo2hazard('DEF',p,entity)
-%   p.asset_markersiz=1;p.schematic_tag=-2,p.npoints=399;
+%   p.asset_markersize=3;p.schematic_tag=1;p.npoints=799;p.Position=[1 5 2560 1340];
 %   climada_event_damage_animation('',p)
 %
 %   params=climada_cosmo2hazard('params') % return default parameters
@@ -193,6 +193,10 @@ save(hazard.filename,'hazard','-v7.3');
 if ~isempty(entity)
     
     entity=climada_assets_encode(entity,hazard);
+    
+    % add elevation in m
+    entity.assets.elevation_m=srtm_elevation_m(entity.assets.lon,entity.assets.lat);
+    entity.assets.DamageFunID(entity.assets.elevation_m>1500)=0; % switch off damage calculation above height
     
     % set global parameters (they are reset below)
     climada_global_damage=climada_global.damage_at_centroid;
