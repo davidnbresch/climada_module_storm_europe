@@ -1,5 +1,5 @@
 function res=schwierz_etal_2010(return_period)
-% climada template
+% climada schwierz 2010
 % MODULE:
 %   storm_europe
 % NAME:
@@ -26,6 +26,7 @@ function res=schwierz_etal_2010(return_period)
 %   res: the results, empty if not successful
 % MODIFICATION HISTORY:
 % David N. Bresch, david.bresch@gmail.com, 20170505, initial
+% David N. Bresch, david.bresch@gmail.com, 20170507, figure as in paper
 %-
 
 res=[]; % init output
@@ -59,6 +60,7 @@ for country_i=2:n_countries
     entity=climada_entity_load(country_ISO3{country_i});
     entity_EUR=climada_entity_combine(entity_EUR,entity);
 end
+% p.blue_ocean=1;climada_entity_plot(entity_EUR,1,p) % checkplot
 
 for country_i=1:n_countries+1
     for climate_model_i=1:n_climate_models
@@ -75,6 +77,7 @@ for country_i=1:n_countries+1
             entity=entity_EUR;
         end
         
+        % to check with 'operational' WS Europe hazard set in climada
         % hazard_file_name=[entity.assets.admin0_ISO3 '_' strrep(entity.assets.admin0_name,' ','') '_eur_WS'];
         % hazard=climada_hazard_load(hazard_file_name);
         % EDS=climada_EDS_calc(entity,hazard);
@@ -117,11 +120,14 @@ res.climate_signal_min = min(res.climate_signal,[],2)-res.climate_signal_mean;
 res.climate_signal_max = max(res.climate_signal,[],2)-res.climate_signal_mean;
 
 figure('Name','mean and extremes');
-bar(res.climate_signal_mean);set(gcf,'Color',[1 1 1])
+bar(res.climate_signal_mean,0.5,'FaceColor',[.5 .5 .5],'EdgeColor',[0 0 0]);set(gcf,'Color',[1 1 1])
 set(gca,'XTickLabel',res.XTickLabel);
 ylabel('Difference [% of CTL]');
-ylim([-50 150]);
+if ischar(return_period),if strcmpi(return_period,'AED'),ylim([-50 150]);end;end
 hold on
-errorbar(1:n_countries+1,res.climate_signal_mean,res.climate_signal_min,res.climate_signal_max);
+errorbar(1:n_countries+1,res.climate_signal_mean,res.climate_signal_min,res.climate_signal_max,'.k');
+for country_i=1:n_countries+1
+    text(country_i-0.4,res.climate_signal_mean(country_i)+sign(res.climate_signal_mean(country_i))*5,sprintf('%i%%',ceil(res.climate_signal_mean(country_i))));
+end % country_i
 
 end % schwierz_etal_2010
