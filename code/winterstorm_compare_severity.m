@@ -26,6 +26,7 @@ function severity=winterstorm_compare_severity(compare_scenarios,plot_linear)
 % MODIFICATION HISTORY:
 % David N. Bresch, david.bresch@gmail.com, 20141128, initial
 % David N. Bresch, david.bresch@gmail.com, 20141223, folders moved
+% David N. Bresch, david.bresch@gmail.com, 20170511, winterstorm_severity method added
 %-
 
 severity=[];
@@ -69,7 +70,7 @@ if exist(reference_hazard_set,'file')
         load(severity_save_file)
         fprintf('loaded\n');
     else
-        hazard_severity=winterstorm_severity(hazard); % calculate scenario severity
+        hazard_severity=winterstorm_severity(hazard,0,'severity'); % calculate scenario severity
         save(severity_save_file,'hazard_severity');
     end
     if isempty(severity),clear severity;end
@@ -89,7 +90,7 @@ for hazard_i=1:length(hazard_set_files)
         load(severity_save_file)
         fprintf('loaded\n');
     else
-        hazard_severity=winterstorm_severity(hazard); % calculate scenario severity
+        hazard_severity=winterstorm_severity(hazard,0,'severity'); % calculate scenario severity
         save(severity_save_file,'hazard_severity');
     end
     if isempty(severity),clear severity;end
@@ -144,7 +145,7 @@ if compare_scenarios
                 load(severity_save_file)
                 fprintf('loaded\n');
             else
-                hazard_severity=winterstorm_severity(hazard); % calculate scenario severity
+                hazard_severity=winterstorm_severity(hazard,0,'severity'); % calculate scenario severity
                 save(severity_save_file,'hazard_severity');
             end
             severity(severity_i)=hazard_severity; % assign
