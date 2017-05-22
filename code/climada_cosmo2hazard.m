@@ -19,6 +19,10 @@ function hazard=climada_cosmo2hazard(cosmo_filename,params,entity)
 %   p.asset_markersize=3;p.schematic_tag=1;p.npoints=799;p.Position=[1 5 2560 1340];
 %   climada_event_damage_animation('',p)
 %
+%   LATEST
+%   p.focus_region=[4 13 45 49];p.asset_markersize=4;p.schematic_tag=1;p.axis_equal=0;
+%   p.npoints=799;p.Position=[1 1 3840 2160];climada_event_damage_animation('',p)
+%
 %   params=climada_cosmo2hazard('params') % return default parameters
 % INPUTS:
 %   cosmo_filename: filename of the netCDF file with COSMO output
