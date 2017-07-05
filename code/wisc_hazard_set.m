@@ -13,7 +13,7 @@ function [hazard,nc]=wisc_hazard_set(wisc_file,check_plot)
 %   hazard=wisc_hazard_set(wisc_file)
 % EXAMPLE:
 %   hazard=wisc_hazard_set('test')
-%   entity=climada_nightlight_entity('DNK');
+%   entity=climada_entity_country('DNK');
 %   EDS=climada_EDS_calc(entity,hazard);
 % INPUTS:
 %   wisc_file: the filename (with path) to the WISC footprint data
@@ -28,6 +28,7 @@ function [hazard,nc]=wisc_hazard_set(wisc_file,check_plot)
 %   nc: the content of the netCDF file (for tests, will be disabled later)
 % MODIFICATION HISTORY:
 % David N. Bresch, david.bresch@gmail.com, 20170319, initial
+% David N. Bresch, david.bresch@gmail.com, 20170705, climada_entity_country
 %-
 
 hazard=[]; % init output
@@ -122,10 +123,15 @@ hazard.orig_event_count = n_events;
 hazard.orig_years       = 1;
 %nc.info.Variables(1).Attributes(2).Value
 %hazard.frequency  = 1/hazard.orig_years;
-hazard.frequency  = hazard.event_ID*0+1; % all one
-hazard.comment=sprintf('WISC WS hazard event set, footprints from %s',wisc_file);
+hazard.frequency        = hazard.event_ID*0+1; % all one
+hazard.comment = sprintf('WISC WS hazard event set, footprints from %s',wisc_file);
+hazard.yyyy             = 1900+hazard.event_ID*0;
+hazard.mm               = hazard.event_ID*0+1;
+hazard.dd               = hazard.event_ID*0+1;
+hazard.comment = sprintf('Warning: date in hazard set filled with dummy values still');
+hazard.fraction         = spones(hazard.intensity); % fraction 100%
 
 fprintf('> saving as %s\n',hazard.filename);
-save(hazard.filename,'hazard');
+save(hazard.filename,'hazard',climada_global.save_file_version);
 
 end % wisc_hazard_set
