@@ -12,6 +12,7 @@ function hazard=climada_cosmo2hazard(cosmo_filename,params,entity)
 % CALLING SEQUENCE:
 %   hazard=climada_cosmo2hazard(cosmo_filename,params,entity)
 % EXAMPLE:
+%   climada_cosmo2hazard('TEST')
 %   p.resolution_km=1;entity=climada_nightlight_entity_load('CHE','',p);
 %   entity=climada_entity_load('CHE_Switzerland_01x01');
 %   p.focus_region=[3 13 45 49];
@@ -56,6 +57,7 @@ function hazard=climada_cosmo2hazard(cosmo_filename,params,entity)
 % MODIFICATION HISTORY:
 % David N. Bresch, david.bresch@gmail.com, 20170228, initial
 % David N. Bresch, david.bresch@gmail.com, 20170301, focus region added to hazard
+% David N. Bresch, david.bresch@gmail.com, 20170707, climada_global.save_file_version added
 %-
 
 hazard=[]; % init output
@@ -192,7 +194,7 @@ hazard.orig_years       = hazard.event_ID*0+1999;
 hazard.frequency        = hazard.event_ID*0+1; % all one
 
 fprintf('saving hazard set in %s\n',hazard.filename);
-save(hazard.filename,'hazard','-v7.3');
+save(hazard.filename,'hazard',climada_global.save_file_version) % for HDF5 format (portability), 20170707
 
 if ~isempty(entity)
     
@@ -217,7 +219,7 @@ if ~isempty(entity)
     hazard.assets.Value=entity.assets.Value;
     
     fprintf('saving animation data in %s\n',params.animation_data);
-    save(params.animation_data,'hazard','-v7.3');
+    save(params.animation_data,'hazard',climada_global.save_file_version) % for HDF5 format (portability), 20170707
     
     if abs(params.test_mode)>1
         params.resolution_km=1;
