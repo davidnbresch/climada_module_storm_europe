@@ -25,6 +25,7 @@
 % MODIFICATION HISTORY:
 % David N. Bresch, david.bresch@gmail.com, 20170721, initial
 % David N. Bresch, david.bresch@gmail.com, 20170722, Octave version (few plots, for speedup)
+% David N. Bresch, david.bresch@gmail.com, 20170722, EM-DAT comparison added
 %-
 
 global climada_global
@@ -42,11 +43,16 @@ wisc_dir='/Users/bresch/polybox/WISC';
 %
 % local folder to write the figures
 fig_dir ='/Users/bresch/Desktop/WISC';
-
+%
+CAGR=0.02; % compound annual growth rate to inflate EM-DAT damages
+%
+% whether we plot all hazard statistics
+plot_hazard=0; % default=1
 
 % obtain country name and ISO3 code
 [country_name,country_ISO3]=climada_country_name(country_name);
 country_ISO3_title=[country_name ' (' country_ISO3 ')'];
+ISO3_country_name=[country_ISO3 strrep(country_name,' ','')];
 
 
 % create the WISC hazard event sets (if it does not exist)
@@ -73,7 +79,7 @@ end
 % show some hazard statistics
 % ---------------------------
 
-if ~climada_global.octave_mode
+if ~climada_global.octave_mode && plot_hazard
     figure;res=climada_hazard_plot(hazard_era20c,0); % max intensity at each centroid
     title(['ERA_{20c} ' res.title_str]) % just to show also source of footprints
     saveas(gcf,[fig_dir filesep 'ERA20c_max_intens.png'],'png');
@@ -107,7 +113,7 @@ else
 end
 figure;climada_entity_plot(entity); % plot it
 title(['Assets for ' country_ISO3_title ' (10x10km)'])
-saveas(gcf,[fig_dir filesep 'assets.png'],'png');
+saveas(gcf,[fig_dir filesep ISO3_country_name '_assets.png'],'png');
 
 
 % calculate damages for all events for asset base
@@ -121,8 +127,35 @@ EDS(2)=climada_EDS_calc(entity,hazard_eraint); % assume same hazard resolution
 % plot the exceedance damage frequency curves (DFC)
 % -------------------------------------------------
 
-climada_EDS_DFC(EDS);title(['Assets for ' country_ISO3_title])
-saveas(gcf,[fig_dir filesep 'DFC.png'],'png');
+figure;[DFC,fig,legend_str]=climada_EDS_DFC(EDS);title(['Assets for ' country_ISO3_title])
+saveas(gcf,[fig_dir filesep ISO3_country_name '_DFC.png'],'png');
+
+
+% add EM-DAT
+em_data=emdat_read('',country_name,'WS',1,1,CAGR); % 2nd last parameter =1 for verbose
+if ~isempty(em_data)
+    hold on
+    % next would be attemps to automatically adjust:
+    % [adj_EDS1,climada2emdat_factor_weighted] = cr_EDS_emdat_adjust(EDS(1));
+    % if abs(climada2emdat_factor_weighted-1)>10*eps
+    %     adj_DFC1=climada_EDS2DFC(adj_EDS1);
+    %     plot(adj_DFC1.return_period,adj_DFC1.damage,':y','LineWidth',1);
+    %     legend_str{end+1}='era20c EM-DAT adjusted';
+    % end
+    % [adj_EDS2,climada2emdat_factor_weighted] = cr_EDS_emdat_adjust(EDS(2));
+    % if abs(climada2emdat_factor_weighted-1)>10*eps
+    %     adj_DFC2=climada_EDS2DFC(adj_EDS2);
+    %     plot(adj_DFC2.return_period,adj_DFC2.damage,':r','LineWidth',1);
+    %     legend_str{end+1}='eraint EM-DAT adjusted';
+    % end
+    
+    plot(em_data.DFC.return_period,em_data.DFC.damage,'dg');
+    legend_str{end+1} = em_data.DFC.annotation_name;
+    plot(em_data.DFC.return_period,em_data.DFC_orig.damage,'og');
+    legend_str{end+1} = em_data.DFC_orig.annotation_name;
+    legend(legend_str,'Location','NorthWest'); % show legend
+    saveas(gcf,[fig_dir filesep ISO3_country_name '_DFC_emdat.png'],'png');
+end % em_data
 
 
 % show the most damaging storms
@@ -133,13 +166,13 @@ if ~climada_global.octave_mode
     figure;res=climada_hazard_plot(hazard_era20c,max_pos); % max intensity at each centroid
     title(['ERA_{20c} ' res.yyyymmdd_str ' most damaging for ' country_ISO3_title]);
     xlabel(sprintf('damage %2.0f mio USD',EDS(1).damage(max_pos)/1e6));ylabel('');
-    saveas(gcf,[fig_dir filesep 'ERA20c_max_damage.png'],'png');
+    saveas(gcf,[fig_dir filesep ISO3_country_name '_ERA20c_max_damage.png'],'png');
     
     [~,max_pos]=max(EDS(2).damage);
     figure;res=climada_hazard_plot(hazard_eraint,max_pos); % max intensity at each centroid
     title(['ERA_{int} ' res.yyyymmdd_str ' most damaging for ' country_ISO3_title]);
     xlabel(sprintf('damage %2.0f mio USD',EDS(2).damage(max_pos)/1e6));ylabel('');
-    saveas(gcf,[fig_dir filesep 'ERAint_max_damage.png'],'png');
+    saveas(gcf,[fig_dir filesep ISO3_country_name '_ERAint_max_damage.png'],'png');
 else
     fprintf('Octave: plots suppressed for speedup\n');
 end
