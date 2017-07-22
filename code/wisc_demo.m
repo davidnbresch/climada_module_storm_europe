@@ -52,7 +52,7 @@ plot_hazard=0; % default=1
 % obtain country name and ISO3 code
 [country_name,country_ISO3]=climada_country_name(country_name);
 country_ISO3_title=[country_name ' (' country_ISO3 ')'];
-ISO3_country_name=[country_ISO3 strrep(country_name,' ','')];
+ISO3_country_name=[country_ISO3 '_' strrep(country_name,' ','')];
 
 
 % create the WISC hazard event sets (if it does not exist)
