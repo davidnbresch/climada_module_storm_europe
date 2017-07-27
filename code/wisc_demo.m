@@ -53,28 +53,37 @@ fig_dir ='/Users/bresch/Desktop/WISC';
 if ~isdir(fig_dir),[fP,fN]=fileparts(fig_dir);mkdir(fP,fN);end % create it
 %
 % whether we plot all hazard statistics
-plot_hazard=0; % default=1
+plot_hazard=1; % default=1
+plot_entity=1; % default=1
+%
+% whether we compare with the default climada (hazard,entity,vulnerability)
+standard_storm_module=0; % default=0
 
 
 
 % create the WISC hazard event sets (if not existing)
 % ---------------------------------
 
-hazard_era20c_file=[climada_global.hazards_dir filesep 'WISC_era20c_eur_WS.mat'];
-if ~exist(hazard_era20c_file,'file')
-    % generate the hazard event set from netCDF footprints
-    % ====================================================
-    hazard_era20c=wisc_hazard_set([wisc_dir filesep 'fp_era20c_*.nc'],0,'WISC_era20c_eur_WS');
+if exist('hazard_era20c','var') && exist('hazard_eraint','var')
+    fprintf('NOTE: using previously loaded hazard_era20c and hazard_eraint\n');
 else
-    % load the previously generated hazard event set
-    hazard_era20c=climada_hazard_load(hazard_era20c_file);
-end
-
-hazard_eraint_file=[climada_global.hazards_dir filesep 'WISC_eraint_eur_WS.mat'];
-if ~exist(hazard_eraint_file,'file')
-    hazard_eraint=wisc_hazard_set([wisc_dir filesep 'fp_eraint_*.nc'],0,'WISC_eraint_eur_WS');
-else
-    hazard_eraint=climada_hazard_load(hazard_eraint_file);
+    
+    hazard_era20c_file=[climada_global.hazards_dir filesep 'WISC_era20c_eur_WS.mat'];
+    if ~exist(hazard_era20c_file,'file')
+        % generate the hazard event set from netCDF footprints
+        % ====================================================
+        hazard_era20c=wisc_hazard_set([wisc_dir filesep 'fp_era20c_*.nc'],0,'WISC_era20c_eur_WS');
+    else
+        % load the previously generated hazard event set
+        hazard_era20c=climada_hazard_load(hazard_era20c_file);
+    end
+    
+    hazard_eraint_file=[climada_global.hazards_dir filesep 'WISC_eraint_eur_WS.mat'];
+    if ~exist(hazard_eraint_file,'file')
+        hazard_eraint=wisc_hazard_set([wisc_dir filesep 'fp_eraint_*.nc'],0,'WISC_eraint_eur_WS');
+    else
+        hazard_eraint=climada_hazard_load(hazard_eraint_file);
+    end
 end
 
 % show some hazard statistics
@@ -97,11 +106,14 @@ end
 
 % loop over countries for a first impression
 
-entity_combined=[];EDS_era20c=[];EDS_eraint=[]; % init
+entity_combined=[];EDS_era20c=[];EDS_eraint=[];EDS_std_comb=[];  % init
+em_data_ET_tot=[];em_data_ET_tot.year=[];em_data_ET_tot.damage=[];em_data_ET_tot.damage_orig=[]; % init
+em_data_ST_tot=[];em_data_ST_tot.year=[];em_data_ST_tot.damage=[];em_data_ST_tot.damage_orig=[]; % init
+
 for country_i=1:length(country_names)
     
     country_name=country_names{country_i};
-        
+    
     % obtain country name and ISO3 code
     [country_name,country_ISO3]=climada_country_name(country_name);
     country_ISO3_title=[country_name ' (' country_ISO3 ')'];
@@ -124,13 +136,15 @@ for country_i=1:length(country_names)
         % load previously generated assets
         entity=climada_entity_load(entity_file);
     end
-    figure;climada_entity_plot(entity); % plot it
-    title(['Assets for ' country_ISO3_title ' (10x10km)'])
-    saveas(gcf,[fig_dir filesep ISO3_country_name '_assets.png'],'png');
+    if plot_entity
+        figure;climada_entity_plot(entity); % plot it
+        title(['Assets for ' country_ISO3_title ' (10x10km)'])
+        saveas(gcf,[fig_dir filesep ISO3_country_name '_assets.png'],'png');
+    end % plot_entity
     
     % add to combined entity
     entity_combined=climada_entity_combine(entity_combined,entity);
-
+    
     
     % calculate damages for all events for asset base
     % ===============================================
@@ -138,66 +152,65 @@ for country_i=1:length(country_names)
     clear EDS % just in case we call this batch code again
     EDS(1)=climada_EDS_calc(entity,hazard_era20c);
     EDS(2)=climada_EDS_calc(entity,hazard_eraint); % assume same hazard resolution
-    
-    % add up over all countries
-    EDS_era20c=climada_EDS_combine(EDS_era20c,EDS(1));
-    EDS_eraint=climada_EDS_combine(EDS_eraint,EDS(2));
+    EDS(1).annotation_name='ERA20c'; % as the name got long
+    EDS(2).annotation_name='ERAint';
+
     
     % plot the exceedance damage frequency curves (DFC)
     % -------------------------------------------------
     
-    figure;[DFC,fig,legend_str]=climada_EDS_DFC(EDS);title(['Assets for ' country_ISO3_title])
+    figure;[~,~,legend_str,legend_handle]=climada_EDS_DFC(EDS);title(['Assets for ' country_ISO3_title])
     saveas(gcf,[fig_dir filesep ISO3_country_name '_DFC.png'],'png');
     
     % add EM-DAT (historic event data for comparison)
-    em_data=emdat_read('',country_ISO3,'WS',1,1); % last parameter =1 for verbose
-    if ~isempty(em_data)
-        hold on
-        plot(em_data.DFC.return_period,em_data.DFC.damage,'dg');
-        legend_str{end+1} = 'EM-DAT extratrop';
-        plot(em_data.DFC.return_period,em_data.DFC_orig.damage,'og');
-        legend_str{end+1} = 'EM-DAT extratrop uncorr.';
-        legend(legend_str,'Location','NorthEast'); % show legend
-    end % em_data
-    
-    em_data=emdat_read('',country_ISO3,'-WS',1,1); % last parameter =1 for verbose
-    if ~isempty(em_data)
-        hold on
-        plot(em_data.DFC.return_period,em_data.DFC.damage,'db');
-        legend_str{end+1} = 'EM-DAT storms';
-        plot(em_data.DFC.return_period,em_data.DFC_orig.damage,'ob');
-        legend_str{end+1} = 'EM-DAT storms uncorr.';
-        legend(legend_str,'Location','NorthEast'); % show legend
-    end % em_data
-    xlim([0 100])
+    % -----------------------------------------------
+    % first all exratropical storms
+    em_data_ET=emdat_read('',country_ISO3,'WS',1,1); % last parameter =1 for verbose
+    [legend_str,legend_handle]=emdat_barplot(em_data_ET,'dm','om','EM-DAT extratrop',legend_str,legend_handle,'SouthEast');
+    % second all storms (since classification ambiguous)
+    em_data_ST=emdat_read('',country_ISO3,'-WS',1,1); % last parameter =1 for verbose
+    [legend_str,legend_handle]=emdat_barplot(em_data_ST,'db','ob','EM-DAT storms',legend_str,legend_handle,'SouthEast');legend('boxoff')
     saveas(gcf,[fig_dir filesep ISO3_country_name '_DFC_emdat.png'],'png');
     
-%     % load the standard hazard set for this country (if exists)
-%     hazard_std_file=[climada_global.hazards_dir filesep ISO3_country_name '_eur_WS.mat'];
-%     if exist(hazard_std_file,'file')
-%         hazard_std=climada_hazard_load(hazard_std_file);
-%         entity_std=climada_assets_encode(entity,hazard_std);
-%         EDS_std=climada_EDS_calc(entity_std,hazard_std);
-%         hold on
-%         DFC_std=climada_EDS2DFC(EDS_std);
-%         RP100_pos=find(DFC_std.return_period==100);
-%         plot(DFC_std.return_period(1:RP100_pos),DFC_std.damage(1:RP100_pos),'or');
-%         legend_str{end+1} = 'standard storm module';
-%         legend(legend_str,'Location','SouthEast'); % show legend
-%         xlim([0 100])
-%         saveas(gcf,[fig_dir filesep ISO3_country_name '_DFC_emdat_std.png'],'png');
-%     end % compare_with_storm_europe_module
+    % some data collection (for annual aggregate further below)
+    em_data_ET_tot.year        = [em_data_ET_tot.year   ; em_data_ET.year];
+    em_data_ET_tot.damage      = [em_data_ET_tot.damage ; em_data_ET.damage];
+    em_data_ET_tot.damage_orig = [em_data_ET_tot.damage_orig ; em_data_ET.damage_orig];
+    em_data_ET_tot.last_year   = em_data_ET.last_year;
+    em_data_ST_tot.year        = [em_data_ST_tot.year   ; em_data_ST.year];
+    em_data_ST_tot.damage      = [em_data_ST_tot.damage ; em_data_ST.damage];
+    em_data_ST_tot.damage_orig = [em_data_ST_tot.damage_orig ; em_data_ST.damage_orig];
+    em_data_ST_tot.last_year   = em_data_ST.last_year;
+    EDS_era20c                 = climada_EDS_combine(EDS_era20c,EDS(1));
+    EDS_eraint                 = climada_EDS_combine(EDS_eraint,EDS(2));
     
-%     if exist('hazard_cmp','var') % NOT climada
-%         entity_cmp=climada_assets_encode(entity,hazard_cmp);
-%         EDS_cmp=climada_EDS_calc(entity_cmp,hazard_cmp);
-%         hold on
-%         DFC_cmp=climada_EDS2DFC(EDS_cmp);
-%         plot(DFC_cmp.return_period(1:RP100_pos),DFC_cmp.damage(1:RP100_pos),'xk');
-%         legend_str{end+1} = 'comparison';
-%         legend(legend_str,'Location','SouthEast'); % show legend
-%         saveas(gcf,[fig_dir filesep ISO3_country_name '_DFC_emdat_std_cmp.png'],'png');
-%     end
+    % load the standard hazard set for this country (if exists)
+    hazard_std_file=[climada_global.hazards_dir filesep ISO3_country_name '_eur_WS.mat'];
+    if exist(hazard_std_file,'file') && standard_storm_module
+        hazard_std=climada_hazard_load(hazard_std_file);
+        entity_std=climada_assets_encode(entity,hazard_std);
+        EDS_std=climada_EDS_calc(entity_std,hazard_std);
+        hold on
+        DFC_std=climada_EDS2DFC(EDS_std);
+        RP100_pos=find(DFC_std.return_period==100);
+        legend_handle(end+1) = plot(DFC_std.return_period(1:RP100_pos),DFC_std.damage(1:RP100_pos),'or');
+        legend_str{end+1}    = 'standard storm module';
+        legend(legend_handle,legend_str,'Location','SouthEast');legend('boxoff')
+        xlim([0 100])
+        saveas(gcf,[fig_dir filesep ISO3_country_name '_DFC_emdat_std.png'],'png');
+        EDS_std_comb=climada_EDS_combine(EDS_std_comb,EDS_std);
+    end % compare_with_storm_europe_module
+    
+    if exist('hazard_cmp','var') % see SPECIAL in header above
+        entity_cmp=climada_assets_encode(entity,hazard_cmp);
+        EDS_cmp=climada_EDS_calc(entity_cmp,hazard_cmp);
+        hold on
+        DFC_cmp=climada_EDS2DFC(EDS_cmp);
+        legend_handle(end+1) = plot(DFC_cmp.return_period(1:RP100_pos),DFC_cmp.damage(1:RP100_pos),'xk');
+        legend_str{end+1}    = 'comparison';
+        legend(legend_handle,legend_str,'Location','SouthEast');
+        saveas(gcf,[fig_dir filesep ISO3_country_name '_DFC_emdat_std_cmp.png'],'png');
+    end
     
     % show the most damaging storms
     % -----------------------------
@@ -220,37 +233,69 @@ for country_i=1:length(country_names)
     
 end % country_i
 
-% % double check (leads to the same, since countries are disjoint)
-% entity_combined=climada_assets_encode(entity_combined,hazard_era20c);
-% EDS_era20c(2)=climada_EDS_calc(entity_combined,hazard_era20c);
-% EDS_eraint(2)=climada_EDS_calc(entity_combined,hazard_eraint);
-% EDS_era20c(2).annotation_name='ERA20c combined assets';
-% EDS_eraint(2).annotation_name='ERAint combined assets';
-
 EDS_era20c(1).annotation_name='ERA20c'; % as the name got long
 EDS_eraint(1).annotation_name='ERAint';
-% plot combined (pan-European) DFC
-figure;[DFC,fig,legend_str]=climada_EDS_DFC(EDS_era20c,EDS_eraint);title('combined DFC')
-saveas(gcf,[fig_dir filesep 'combined_DFC.png'],'png');
 
-% add EM-DAT (historic event data for comparison)
-em_data=emdat_read('',country_names,'WS',1,1); % last parameter =1 for verbose
-if ~isempty(em_data)
-    hold on
-    plot(em_data.DFC.return_period,em_data.DFC.damage,'dg');
-    legend_str{end+1} = 'EM-DAT extratrop';
-    plot(em_data.DFC.return_period,em_data.DFC_orig.damage,'og');
-    legend_str{end+1} = 'EM-DAT extratrop uncorr.';
-    legend(legend_str,'Location','SouthEast'); % show legend
+% plot combined (pan-European) annual aggregate DFC
+% -------------------------------------------------
+
+YDS_era20c=climada_EDS2YDS(EDS_era20c,hazard_era20c);
+YDS_eraint=climada_EDS2YDS(EDS_eraint,hazard_eraint);
+figure;[~,~,legend_str,legend_handle]=climada_EDS_DFC(YDS_era20c,YDS_eraint);title('combined annual aggregate DFC')
+saveas(gcf,[fig_dir filesep 'combined_aggregate_DFC.png'],'png');
+
+% add EM-DAT (we need to construct the DFC here first)
+% ----------------------------------------------------
+
+% first for extratropical storms (ET)
+if ~isempty(em_data_ET_tot)
+    % create the annual aggregate (just summing up all events in each year)
+    unique_years=unique(em_data_ET_tot.year);
+    for year_i=1:length(unique_years)
+        em_data_ET_tot.annual_damage(year_i)     =sum(em_data_ET_tot.damage(     em_data_ET_tot.year==unique_years(year_i)));
+        em_data_ET_tot.annual_damage_orig(year_i)=sum(em_data_ET_tot.damage_orig(em_data_ET_tot.year==unique_years(year_i)));
+    end
+    
+    % create the annual aggregate exceedence frequency curve
+    em_data_ET_tot.frequency = ones(length(em_data_ET_tot.annual_damage),1)/(em_data_ET_tot.last_year-min(unique_years)+1);
+    [em_data_ET_tot.DFC.damage,em_data_ET_tot.DFC.return_period]=...
+        climada_damage_exceedence(em_data_ET_tot.annual_damage',     em_data_ET_tot.frequency',[],1);
+    [em_data_ET_tot.DFC_orig.damage,em_data_ET_tot.DFC_orig.return_period]=...
+        climada_damage_exceedence(em_data_ET_tot.annual_damage_orig',em_data_ET_tot.frequency',[],1);
+    
+    [legend_str,legend_handle]=emdat_barplot(em_data_ET_tot,'dm','om','EM-DAT extratrop',legend_str,legend_handle,'SouthEast');
+    legend('boxoff')
+    saveas(gcf,[fig_dir filesep 'combined_aggregate_DFC_emdat.png'],'png');
 end % em_data
 
-em_data=emdat_read('',country_names,'-WS',1,1); % last parameter =1 for verbose
-if ~isempty(em_data)
-    hold on
-    plot(em_data.DFC.return_period,em_data.DFC.damage,'db');
-    legend_str{end+1} = 'EM-DAT storms';
-    plot(em_data.DFC.return_period,em_data.DFC_orig.damage,'ob');
-    legend_str{end+1} = 'EM-DAT storms uncorr.';
-    legend(legend_str,'Location','SouthEast'); % show legend
+% and again for storms (ST)
+if ~isempty(em_data_ST_tot)
+    % create the annual aggregate (just summing up all events in each year)
+    unique_years=unique(em_data_ST_tot.year);
+    for year_i=1:length(unique_years)
+        em_data_ST_tot.annual_damage(year_i)     =sum(em_data_ST_tot.damage(     em_data_ST_tot.year==unique_years(year_i)));
+        em_data_ST_tot.annual_damage_orig(year_i)=sum(em_data_ST_tot.damage_orig(em_data_ST_tot.year==unique_years(year_i)));
+    end
+    
+    % create the annual aggregate exceedence frequency curve
+    em_data_ST_tot.frequency = ones(length(em_data_ST_tot.annual_damage),1)/(em_data_ST_tot.last_year-min(unique_years)+1);
+    [em_data_ST_tot.DFC.damage,em_data_ST_tot.DFC.return_period]=...
+        climada_damage_exceedence(em_data_ST_tot.annual_damage',     em_data_ST_tot.frequency',[],1);
+    [em_data_ST_tot.DFC_orig.damage,em_data_ST_tot.DFC_orig.return_period]=...
+        climada_damage_exceedence(em_data_ST_tot.annual_damage_orig',em_data_ST_tot.frequency',[],1);
+    
+    [legend_str,legend_handle]=emdat_barplot(em_data_ST_tot,'db','ob','EM-DAT storms',   legend_str,legend_handle,'SouthEast');
+    legend('boxoff')
+    saveas(gcf,[fig_dir filesep 'combined_aggregate_DFC_emdat.png'],'png');
 end % em_data
-saveas(gcf,[fig_dir filesep 'combined_DFC_emdat.png'],'png');
+
+if ~isempty(EDS_std_comb)
+    hold on
+    YDS_std_comb=climada_EDS2YDS(EDS_std_comb);
+    YFC_std=climada_EDS2DFC(YDS_std_comb);
+    RP100_pos=find(YFC_std.return_period==100);
+    legend_handle(end+1)=plot(YFC_std.return_period(1:RP100_pos),YFC_std.damage(1:RP100_pos),'or');
+    legend_str{end+1} = 'standard storm module';
+    legend(legend_handle,legend_str,'Location','SouthEast');
+    saveas(gcf,[fig_dir filesep 'combined_aggregate_DFC_emdat_std.png'],'png');
+end
