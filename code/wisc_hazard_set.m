@@ -18,6 +18,10 @@ function [hazard,nc]=wisc_hazard_set(wisc_file,check_plot,hazard_filename)
 %   time over all files and all timesteps therein to extract the wind
 %   speed.
 %
+%   NOTE: if climada_global.save_file_version is set to ='-v7' to allow hazard sets to
+%   be read in Octave, too, hazard.fraction is not saved, but re-processed
+%   each time the hazard is loaded (saves almost 25% of .mat file size).
+%
 %   previous call: none
 %   next call: climada_EDS_calc or e.g. climada_hazard_plot(hazard,0)
 %   see also: wisc_demo
@@ -71,6 +75,7 @@ function [hazard,nc]=wisc_hazard_set(wisc_file,check_plot,hazard_filename)
 % David N. Bresch, david.bresch@gmail.com, 20170319, initial
 % David N. Bresch, david.bresch@gmail.com, 20170705, climada_entity_country
 % David N. Bresch, david.bresch@gmail.com, 20170721, checked with latest WISC data and allow for regexp
+% David N. Bresch, david.bresch@gmail.com, 20170730, save for Octave compatibility
 %-
 
 hazard=[]; % init output
@@ -211,7 +216,9 @@ hazard.orig_event_count = n_events;
 hazard.orig_years       = hazard.yyyy(end)-hazard.yyyy(1)+1;
 hazard.frequency        = (hazard.event_ID*0+1)/hazard.orig_years;
 hazard.comment = sprintf('WISC WS hazard event set, footprints from %s',wisc_file);
-hazard.fraction         = spones(hazard.intensity); % fraction 100%
+if ~strcmpi(climada_global.save_file_version,'-v7') % gets too big in Octave
+    hazard.fraction     = spones(hazard.intensity); % fraction 100%
+end
 
 fprintf('> saving as %s\n',hazard.filename);
 save(hazard.filename,'hazard',climada_global.save_file_version);
