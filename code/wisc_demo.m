@@ -47,7 +47,7 @@ if ~climada_init_vars,return;end % init/import global variables
 %
 % define the TEST country or -ies (at least one)
 country_names={'GBR','IRL','DEU','FRA','DNK','NLD','BEL','CHE','ESP'}; % name like 'United Kingdom' or ISO3 code like 'GBR'
-country_names={'GBR','DEU','FRA'}; % name like 'United Kingdom' or ISO3 code like 'GBR'
+%country_names={'GBR','DEU','FRA'}; % name like 'United Kingdom' or ISO3 code like 'GBR'
 %
 % local folder with the WISC netCDF storm footprints
 wisc_dir='/Users/bresch/polybox/WISC/footprints';
@@ -58,8 +58,8 @@ fig_ext ='png';
 if ~isdir(fig_dir),[fP,fN]=fileparts(fig_dir);mkdir(fP,fN);end % create it
 %
 % whether we plot all hazard statistics
-plot_hazard=0; % default=1
-plot_entity=0; % default=1
+plot_hazard=1; % default=1
+plot_entity=1; % default=1
 %
 % whether we compare with the default climada (hazard,entity,vulnerability)
 standard_storm_module=0; % default=0
@@ -69,8 +69,8 @@ climada_global.save_file_version='-v7'; % NOT -v7.3 to allow reading in Octave
 
 if climada_global.octave_mode
     % since Octave is VERY slow in plotting, skip this unless requested
-    plot_hazard=0;
-    plot_entity=0;
+    plot_hazard=1;
+    plot_entity=1;
     sok=1; % saving to .png is not possible
     fig_ext ='eps';
 else

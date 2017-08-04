@@ -76,6 +76,7 @@ function [hazard,nc]=wisc_hazard_set(wisc_file,check_plot,hazard_filename)
 % David N. Bresch, david.bresch@gmail.com, 20170705, climada_entity_country
 % David N. Bresch, david.bresch@gmail.com, 20170721, checked with latest WISC data and allow for regexp
 % David N. Bresch, david.bresch@gmail.com, 20170730, save for Octave compatibility
+% David N. Bresch, david.bresch@gmail.com, 20170801, NaN set to zero
 %-
 
 hazard=[]; % init output
@@ -189,6 +190,8 @@ for file_i=1:n_files
 end % file i
 climada_progress2stdout(0) % terminate
 fprintf('done \n');
+
+hazard.intensity(isnan(hazard.intensity))=0; % all NaN to zero
 
 if check_plot
     fprintf('contour plot ...');
