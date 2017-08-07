@@ -71,8 +71,8 @@ if climada_global.octave_mode
     % since Octave is VERY slow in plotting, skip this unless requested
     plot_hazard=1;
     plot_entity=1;
-    sok=1; % saving to .png is not possible
-    fig_ext ='eps';
+    sok=1; % set this =0 to skip saving to disk (if troubles)
+    fig_ext ='eps'; % saving to .png is not possible
 else
     sok=1; % saving to .png is ok
 end
@@ -90,20 +90,16 @@ else
         % ====================================================
         hazard_era20c=wisc_hazard_set([wisc_dir filesep 'fp_era20c_*.nc'],0,'WISC_era20c_eur_WS');
     else
-        fprintf('NOTE: loading previously calculated hazard_era20c and hazard_eraint ...\n');
-        % load the previously generated hazard event set
-        % (ignore the trick with climada_global.octave_mode)
-        climada_global_octave_mode=climada_global.octave_mode; % store
-        climada_global.octave_mode=1; % to avois saving to hazard set
-        hazard_era20c=climada_hazard_load(hazard_era20c_file);
-        climada_global.octave_mode=climada_global_octave_mode; % reset
+        fprintf('NOTE: loading previously calculated hazard_era20c ...\n');
+        hazard_era20c=climada_hazard_load(hazard_era20c_file,1);
     end
     
     hazard_eraint_file=[climada_global.hazards_dir filesep 'WISC_eraint_eur_WS.mat'];
     if ~exist(hazard_eraint_file,'file')
         hazard_eraint=wisc_hazard_set([wisc_dir filesep 'fp_eraint_*.nc'],0,'WISC_eraint_eur_WS');
     else
-        hazard_eraint=climada_hazard_load(hazard_eraint_file);
+        fprintf('NOTE: loading previously calculated hazard_eraint ...\n');
+        hazard_eraint=climada_hazard_load(hazard_eraint_file,1);
     end
 end
 
@@ -156,7 +152,7 @@ for country_i=1:length(country_names)
         save(entity_file,'entity',climada_global.save_file_version);
     else
         % load previously generated assets
-        entity=climada_entity_load(entity_file);
+        entity=climada_entity_load(entity_file,1);
         save(entity_file,'entity','-v7'); % for Octave compatibility
 
     end
