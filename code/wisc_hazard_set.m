@@ -77,6 +77,7 @@ function [hazard,nc]=wisc_hazard_set(wisc_file,check_plot,hazard_filename)
 % David N. Bresch, david.bresch@gmail.com, 20170721, checked with latest WISC data and allow for regexp
 % David N. Bresch, david.bresch@gmail.com, 20170730, save for Octave compatibility
 % David N. Bresch, david.bresch@gmail.com, 20170801, NaN set to zero
+% David N. Bresch, david.bresch@gmail.com, 20171004, checked again, works fine
 %-
 
 hazard=[]; % init output

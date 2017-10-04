@@ -8,7 +8,8 @@
 %   batch job to run WISC demo (key function called: wisc_hazard_set)
 %
 %   FIRST, set PARAMETERS in code below, such as the folder with the WISC
-%   netCDF storm footprints
+%   netCDF storm footprints. Visit https://wisc.climate.copernicus.eu/wisc/#/help/products 
+%   and download C3S_WISC_FOOTPRINT_NETCDF_0100.tgz, then edit the wisc_dir below 
 %
 %   see comments in code below. For speedup in subsequent calls, the WISC
 %   hazard event sets are stored. If run in Ocatve, only damage frequency
@@ -37,6 +38,7 @@
 % David N. Bresch, david.bresch@gmail.com, 20170726, combined view added
 % David N. Bresch, david.bresch@gmail.com, 20170730, Octave use improved
 % David N. Bresch, david.bresch@gmail.com, 20170731, Octave printing
+% David N. Bresch, david.bresch@gmail.com, 20171004, hint to WISC data source, paths relative
 %-
 
 global climada_global
@@ -46,16 +48,28 @@ if ~climada_init_vars,return;end % init/import global variables
 % this section defines all parameters
 %
 % define the TEST country or -ies (at least one)
-country_names={'GBR','IRL','DEU','FRA','DNK','NLD','BEL','CHE','ESP'}; % name like 'United Kingdom' or ISO3 code like 'GBR'
+%country_names={'GBR','IRL','DEU','FRA','DNK','NLD','BEL','CHE','ESP'}; % name like 'United Kingdom' or ISO3 code like 'GBR'
 %country_names={'GBR','DEU','FRA'}; % name like 'United Kingdom' or ISO3 code like 'GBR'
+country_names={'GBR'}; % name like 'United Kingdom' or ISO3 code like 'GBR'
 %
 % local folder with the WISC netCDF storm footprints
-wisc_dir='/Users/bresch/polybox/WISC/footprints';
+wisc_dir=[climada_global.data_dir filesep 'WISC' filesep 'C3S_WISC_FOOTPRINT_NETCDF_0100'];
+if ~isdir(wisc_dir)
+    fprintf('Please locate the WISC netCDF files folder:\n');
+    wisc_dir = uigetdir(climada_global.data_dir, 'Locate WISC netCDF files folder:');
+    if isequal(filename,0) || isequal(pathname,0)
+        fprintf('No WISC netCDF file folder selected\n');
+        fprintf(['> visit <a href="https://wisc.climate.copernicus.eu/wisc/#/help/products">'...
+            'https://wisc.climate.copernicus.eu/wisc/#/help/products</a>\n',...
+            '  and download C3S_WISC_FOOTPRINT_NETCDF_0100.tgz\n']);
+        return
+    end
+end % ~isdir(wisc_dir)
 %
 % local folder to write the figures
-fig_dir ='/Users/bresch/Desktop/WISC';
-fig_ext ='png';
+fig_dir =[climada_global.results_dir filesep 'WISC'];
 if ~isdir(fig_dir),[fP,fN]=fileparts(fig_dir);mkdir(fP,fN);end % create it
+fig_ext ='png';
 %
 % whether we plot all hazard statistics
 plot_hazard=1; % default=1
