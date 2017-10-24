@@ -50,9 +50,13 @@ if ~climada_init_vars,return;end % init/import global variables
 % define the TEST country or -ies (at least one)
 %country_names={'GBR','IRL','DEU','FRA','DNK','NLD','BEL','CHE','ESP'}; % name like 'United Kingdom' or ISO3 code like 'GBR'
 %country_names={'GBR','DEU','FRA'}; % name like 'United Kingdom' or ISO3 code like 'GBR'
-country_names={'GBR'}; % name like 'United Kingdom' or ISO3 code like 'GBR'
+%country_names={'GBR'}; % name like 'United Kingdom' or ISO3 code like 'GBR'
+country_names={'Germany','Switzerland'}; % name like 'United Kingdom' or ISO3 code like 'GBR'
 %
 % local folder with the WISC netCDF storm footprints
+%wisc_dir='/Users/bresch/polybox/WISC/footprints';
+%wisc_dir='C:\shortpaths\Documents\WISC\polybox_clone\footprints';
+%wisc_dir='D:\Documents_DATA\WISC_data_20170918\Storm Footprints';
 wisc_dir=[climada_global.data_dir filesep 'WISC' filesep 'C3S_WISC_FOOTPRINT_NETCDF_0100'];
 if ~isdir(wisc_dir)
     fprintf('Please locate the WISC netCDF files folder:\n');
@@ -337,5 +341,103 @@ if ~isempty(EDS_std_comb)
     legend(legend_handle,legend_str,'Location','SouthEast');
     if sok,saveas(gcf,[fig_dir filesep 'combined_aggregate_DFC_emdat_std.' fig_ext],fig_ext);end
 end
+
+
+%% WISC Synthetic Event Set
+% visit 'https://wisc.climate.copernicus.eu/wisc/#/help/products' where you
+% download and unpack the synthetic event set footprints (C3S_WISC_EVENT_SET_PART1_0100.tgz to C3S_WISC_EVENT_SET_PART6_0100.tgz)
+
+
+wisc_dir='D:\Documents_DATA\WISC_data_20170918\Synthetic Event Set'; % or change it to the folder with the unpacked synthetic event set footprints downloaded from WISC
+
+
+
+% create hazard out of WISC synthetic event set. save one member each variable/file for better memory matching
+[hazard_synthetic1,nc_tryout1]=wisc_event_set_hazard([wisc_dir filesep 'fp_ga3ups_*001.nc'],1,'WISC_SynEventSet_tryout_member1');
+clear hazard_synthetic1
+[hazard_synthetic2,nc_tryout2]=wisc_event_set_hazard([wisc_dir filesep 'fp_ga3ups_*002.nc'],1,'WISC_SynEventSet_tryout_member2');
+clear hazard_synthetic2
+[hazard_synthetic3,nc_tryout3]=wisc_event_set_hazard([wisc_dir filesep 'fp_ga3ups_*003.nc'],1,'WISC_SynEventSet_tryout_member3');
+clear hazard_synthetic3
+[hazard_synthetic4,nc_tryout4]=wisc_event_set_hazard([wisc_dir filesep 'fp_ga3ups_*004.nc'],1,'WISC_SynEventSet_tryout_member4');
+clear hazard_synthetic4
+[hazard_synthetic5,nc_tryout5]=wisc_event_set_hazard([wisc_dir filesep 'fp_ga3ups_*005.nc'],1,'WISC_SynEventSet_tryout_member5');
+clear hazard_synthetic5
+
+hazard_synthetic1 = climada_hazard_load([climada_global.hazards_dir filesep 'WISC_SynEventSet_tryout_member1' '.mat'],1);
+hazard_synthetic2 = climada_hazard_load([climada_global.hazards_dir filesep 'WISC_SynEventSet_tryout_member2' '.mat'],1);
+
+
+% entity=climada_nightlight_global_entity
+% entity = climada_entity_load([climada_global.entities_dir filesep 'GLB_0360as_entity.mat'])
+
+
+entity_combined=[];EDS_era20c=[];EDS_eraint=[];EDS_std_comb=[];  % init
+em_data_ET_tot=[];em_data_ET_tot.year=[];em_data_ET_tot.damage=[];em_data_ET_tot.damage_orig=[]; % init
+em_data_ST_tot=[];em_data_ST_tot.year=[];em_data_ST_tot.damage=[];em_data_ST_tot.damage_orig=[]; % init
+
+
+country_names={'Germany','Switzerland'};
+
+for country_i=1:length(country_names)
+    
+    country_name=country_names{country_i};
+    
+    % obtain country name and ISO3 code
+    [country_name,country_ISO3]=climada_country_name(country_name);
+    country_ISO3_title=[country_name ' (' country_ISO3 ')'];
+    ISO3_country_name=[country_ISO3 '_' strrep(country_name,' ','')];
+    
+    fprintf('\n*** processing %s: ***\n',country_ISO3_title);
+    
+    % create the (default, 10x10km) asset base
+    % ----------------------------------------
+    
+    entity_file=[climada_global.entities_dir filesep 'WISC_' country_ISO3 '_' strrep(country_name,' ','') '_10x10km.mat'];
+    if ~exist(entity_file,'file')
+        % generate the asset data for requested country on 10x10km resolution
+        % ===================================================================
+        % (includes the default damage function for storm Europe, too)
+        entity=climada_entity_country(country_ISO3);
+        entity=climada_assets_encode(entity,hazard_synthetic);
+        save(entity_file,'entity',climada_global.save_file_version);
+    else
+        % load previously generated assets
+        entity=climada_entity_load(entity_file,1);
+        %save(entity_file,'entity','-v7'); % for Octave compatibility
+
+    end
+%     if plot_entity
+%         figure;climada_entity_plot(entity); % plot it
+%         title(['Assets for ' country_ISO3_title ' (10x10km)'])
+%         if sok,saveas(gcf,[fig_dir filesep ISO3_country_name '_assets.' fig_ext],fig_ext);end
+%     end % plot_entity
+    
+    % add to combined entity
+    
+    % calculate damages for all events for asset base
+    % ===============================================
+    % EDS = event damage set
+    clear EDS % just in case we call this batch code again
+    EDS(1)=climada_EDS_calc(entity,hazard_era20c);
+    EDS(1).annotation_name='ERA 20c'; % as the name got long
+    EDS(2)=climada_EDS_calc(entity,hazard_eraint); % assume same hazard resolution
+    EDS(2).annotation_name='ERA int';
+    
+    for member_i=1:5
+        hazard_synthetic = climada_hazard_load([climada_global.hazards_dir filesep 'WISC_SynEventSet_tryout_member' num2str(member_i) '.mat']);
+        EDS(member_i+2)=climada_EDS_calc(entity,hazard_synthetic);
+        EDS(member_i+2).annotation_name=['synthetic tryout member' num2str(member_i)]; % as the name got long
+    end
+    
+    % plot the exceedance damage frequency curves (DFC)
+    % -------------------------------------------------
+    
+    figure;[~,~,legend_str,legend_handle]=climada_EDS_DFC(EDS);title(['Assets for ' country_ISO3_title])
+    if sok,saveas(gcf,[fig_dir filesep ISO3_country_name '_DFC_historic_synthetic.' fig_ext],fig_ext);end
+    
+
+end % country_i
+
 
 climada_global.save_file_version=climada_global_save_file_version; % reset
