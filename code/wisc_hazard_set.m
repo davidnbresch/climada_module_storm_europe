@@ -78,6 +78,7 @@ function [hazard,nc]=wisc_hazard_set(wisc_file,check_plot,hazard_filename)
 % David N. Bresch, david.bresch@gmail.com, 20170730, save for Octave compatibility
 % David N. Bresch, david.bresch@gmail.com, 20170801, NaN set to zero
 % David N. Bresch, david.bresch@gmail.com, 20171004, checked again, works fine
+% Thomas R??sli, thomas.roeoesli@usys.ethz.ch, 20171024, added orig_yearset for later use in climada_EDS2YDS
 %-
 
 hazard=[]; % init output
@@ -204,6 +205,57 @@ if check_plot
     fprintf(' done \n');
 end
 
+% Create a yearset to be used in climada_EDS2YDS
+create_yearset = true;
+hazard.orig_event_flag  = ones(1,n_events);
+if create_yearset
+    
+    % the beginner does not need to understand whats happening here ;-)
+    % see climada_EDS2YDS
+    t0       = clock;
+    
+    year_i=1; % init
+    active_year=hazard(1).yyyy(1); % first year
+    event_index=[];event_count=0; % init
+    
+    for footprint_i=1:n_events
+        
+        if hazard.yyyy(footprint_i)==active_year
+            if hazard.orig_event_flag(footprint_i)
+                % same year, add if original track
+                event_count=event_count+1;
+                event_index=[event_index footprint_i];
+            end
+        else
+            % new year, save last year
+            hazard.orig_yearset(year_i).yyyy=active_year;
+            hazard.orig_yearset(year_i).event_count=event_count;
+            hazard.orig_yearset(year_i).event_index=event_index;
+            year_i=year_i+1;
+            % reset for next year
+            active_year=hazard.yyyy(footprint_i);
+            if hazard.orig_event_flag(footprint_i)
+                % same year, add if original track
+                event_count=1;
+                event_index=footprint_i;
+            end
+        end
+        
+        
+    end % footprint_i
+    
+    % save last year
+    hazard.orig_yearset(year_i).yyyy=active_year;
+    hazard.orig_yearset(year_i).event_count=event_count;
+    hazard.orig_yearset(year_i).event_index=event_index;
+    
+    t_elapsed = etime(clock,t0);
+    msgstr    = sprintf('generating yearset took %3.2f sec',t_elapsed);
+    
+end % create_yearset
+
+
+
 % fill/complete hazard structure
 hazard.lonlat_size      = size(nc.lon);
 hazard.lon              = reshape(nc.lon,1,n_centroids);
@@ -215,7 +267,7 @@ hazard.date             = datestr(now);
 hazard.reference_year   = climada_global.present_reference_year;
 hazard.event_ID         = 1:n_events;
 hazard.event_count      = n_events;
-hazard.orig_event_flag  = ones(1,n_events);
+% hazard.orig_event_flag  = ones(1,n_events);
 hazard.orig_event_count = n_events;
 hazard.orig_years       = hazard.yyyy(end)-hazard.yyyy(1)+1;
 hazard.frequency        = (hazard.event_ID*0+1)/hazard.orig_years;
