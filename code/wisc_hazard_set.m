@@ -78,6 +78,7 @@ function [hazard,nc]=wisc_hazard_set(wisc_file,check_plot,hazard_filename)
 % David N. Bresch, david.bresch@gmail.com, 20170730, save for Octave compatibility
 % David N. Bresch, david.bresch@gmail.com, 20170801, NaN set to zero
 % David N. Bresch, david.bresch@gmail.com, 20171004, checked again, works fine
+% David N. Bresch, david.bresch@gmail.com, 20171108, double file excluded
 %-
 
 hazard=[]; % init output
@@ -105,6 +106,10 @@ matrix_density=.1; % the average density of the hazard (=#nozero/#all)
 %
 % define the TEST wind footprint
 test_wisc_file=[module_data_dir filesep 'raw_windfields' filesep 'fp_3532_1999120318_historic_CF.nc'];
+%
+% there is one event presetn both in ere20 and eraint for comparison, hence
+% we avoid double-counting
+exclude_file='fp_era20c_1990012515_701_0.nc';
 
 % template to prompt for filename if not given
 if isempty(wisc_file) % local GUI
@@ -143,10 +148,10 @@ n_files=length(wisc_files);
 
 % pre-loop to determine the number of times
 % -----------------------------------------
-n_events=0; % init
+n_events=0;exclude_file_i=0; % init
 for file_i=1:n_files
     wisc_file_1=[wisc_dir filesep wisc_files(file_i).name];
-    fprintf('pre-processing %s\n',wisc_file_1);
+    fprintf('pre-processing %s',wisc_file_1);
     if file_i==1 % take grid info from first file        
         nc.info = ncinfo(wisc_file_1);
         nc.lat  = ncread(wisc_file_1,'latitude');
@@ -154,10 +159,23 @@ for file_i=1:n_files
         % construct the 2D grid, if needed
         if size(nc.lat,2)==1,[nc.lat,nc.lon] = meshgrid(nc.lat,nc.lon);end
     end
-    nc.time = ncread(wisc_file_1,'time');
-    n_times = length(nc.time);
-    n_events=n_events+n_times; % sum up
+    
+    % exclude one file that exists twice (for comparison)
+    if strcmpi(wisc_files(file_i).name,exclude_file)
+        fprintf(' *** excluded (exists only for comparison)');
+        exclude_file_i=file_i;
+    else
+        nc.time = ncread(wisc_file_1,'time');
+        n_times = length(nc.time);
+        n_events=n_events+n_times; % sum up
+    end
+    fprintf('\n');
 end % file_i
+
+if exclude_file_i>0
+    wisc_files(exclude_file_i)=[]; % exclude this file
+    n_files=length(wisc_files);
+end
 
 % allocate the hazard set
 n_centroids=numel(nc.lon);
@@ -171,23 +189,25 @@ fprintf('> converting %i files with total %i timesteps: ',n_files,n_events);
 next_i=1;
 climada_progress2stdout    % init, see terminate below
 for file_i=1:n_files
-    wisc_file_1=[wisc_dir filesep wisc_files(file_i).name];
-    nc.time = ncread(wisc_file_1,'time');
-    n_times = length(nc.time);
-    for time_i=1:n_times
-        temp_data=ncread(wisc_file_1,'max_wind_gust',[1 1 time_i],[Inf Inf 1]); % only one time slab
-        if file_i==1 && time_i==1,nc.wind = temp_data;end % first one stored for checks
-        temp_data(temp_data<wind_threshold)=0;
-        hazard.intensity(next_i,:)=sparse(reshape(double(temp_data),1,n_centroids));
-        % figure date
-        temp_str=strrep(wisc_files(file_i).name,'fp_era20c_','');
-        temp_str=strrep(               temp_str,'fp_eraint_','');
-        hazard.yyyy(next_i)=str2double(temp_str(1:4));
-        hazard.mm(next_i)  =str2double(temp_str(5:6));
-        hazard.dd(next_i)  =str2double(temp_str(7:8));
-        climada_progress2stdout(next_i,n_events,10,'events'); % update
-        next_i=next_i+1; % explicit, on the safe side
-    end % time_i
+    if length(wisc_files(file_i).name)>2
+        wisc_file_1=[wisc_dir filesep wisc_files(file_i).name];
+        nc.time = ncread(wisc_file_1,'time');
+        n_times = length(nc.time);
+        for time_i=1:n_times
+            temp_data=ncread(wisc_file_1,'max_wind_gust',[1 1 time_i],[Inf Inf 1]); % only one time slab
+            if file_i==1 && time_i==1,nc.wind = temp_data;end % first one stored for checks
+            temp_data(temp_data<wind_threshold)=0;
+            hazard.intensity(next_i,:)=sparse(reshape(double(temp_data),1,n_centroids));
+            % figure date
+            temp_str=strrep(wisc_files(file_i).name,'fp_era20c_','');
+            temp_str=strrep(               temp_str,'fp_eraint_','');
+            hazard.yyyy(next_i)=str2double(temp_str(1:4));
+            hazard.mm(next_i)  =str2double(temp_str(5:6));
+            hazard.dd(next_i)  =str2double(temp_str(7:8));
+            climada_progress2stdout(next_i,n_events,10,'events'); % update
+            next_i=next_i+1; % explicit, on the safe side
+        end % time_i
+    end
 end % file i
 climada_progress2stdout(0) % terminate
 fprintf('done \n');

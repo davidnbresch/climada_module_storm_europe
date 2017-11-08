@@ -21,6 +21,13 @@
 %   If you further provide a hazard set as hazard_cmp (being loaded before
 %   you call wisc_demo), the code does also encode to and compare with.
 %
+%   See show_BOTH_separate in PARAMETERS section in code to run both parts
+%   (era20 and eraint) separately
+%
+%   check:
+%   fp_era20c_1972111300_177_0
+%   fp_era20c_1972111309_177_0
+%
 % CALLING SEQUENCE:
 %   wisc_demo
 % EXAMPLE:
@@ -39,6 +46,7 @@
 % David N. Bresch, david.bresch@gmail.com, 20170730, Octave use improved
 % David N. Bresch, david.bresch@gmail.com, 20170731, Octave printing
 % David N. Bresch, david.bresch@gmail.com, 20171004, hint to WISC data source, paths relative
+% David N. Bresch, david.bresch@gmail.com, 20171108, combined full hazard event set, last (duplicate) era20 event excluded
 %-
 
 global climada_global
@@ -47,10 +55,13 @@ if ~climada_init_vars,return;end % init/import global variables
 % PARAMETERS
 % this section defines all parameters
 %
+% very special case to show the two sub-sets
+show_BOTH_separate=0; % default=0
+%
 % define the TEST country or -ies (at least one)
-%country_names={'GBR','IRL','DEU','FRA','DNK','NLD','BEL','CHE','ESP'}; % name like 'United Kingdom' or ISO3 code like 'GBR'
-%country_names={'GBR','DEU','FRA'}; % name like 'United Kingdom' or ISO3 code like 'GBR'
-country_names={'GBR'}; % name like 'United Kingdom' or ISO3 code like 'GBR'
+%country_names={'GBR','IRL','DEU','FRA','DNK','NLD','BEL','CHE','AUT','ESP'}; % name like 'United Kingdom' or ISO3 code like 'GBR'
+country_names={'GBR','DEU','FRA'}; % name like 'United Kingdom' or ISO3 code like 'GBR'
+%country_names={'GBR'}; % name like 'United Kingdom' or ISO3 code like 'GBR'
 %
 % local folder with the WISC netCDF storm footprints
 wisc_dir=[climada_global.data_dir filesep 'WISC' filesep 'C3S_WISC_FOOTPRINT_NETCDF_0100'];
@@ -72,8 +83,8 @@ if ~isdir(fig_dir),[fP,fN]=fileparts(fig_dir);mkdir(fP,fN);end % create it
 fig_ext ='png';
 %
 % whether we plot all hazard statistics
-plot_hazard=1; % default=1
-plot_entity=1; % default=1
+plot_hazard=0; % default=1
+plot_entity=0; % default=1
 %
 % whether we compare with the default climada (hazard,entity,vulnerability)
 standard_storm_module=0; % default=0
@@ -94,26 +105,42 @@ end
 % create the WISC hazard event sets (if not existing)
 % ---------------------------------
 
-if exist('hazard_era20c','var') && exist('hazard_eraint','var')
-    fprintf('NOTE: using previously loaded hazard_era20c and hazard_eraint\n');
+hazard_wisc_file=[climada_global.hazards_dir filesep 'WISC_eur_WS.mat'];
+if exist('hazard_wisc','var')
+    fprintf('NOTE: using previously loaded hazard_wisc\n');
+elseif exist(hazard_wisc_file,'file')
+    fprintf('loading %s\n',hazard_wisc_file);
+    hazard_wisc=climada_hazard_load(hazard_wisc_file);
 else
-    
-    hazard_era20c_file=[climada_global.hazards_dir filesep 'WISC_era20c_eur_WS.mat'];
-    if ~exist(hazard_era20c_file,'file')
-        % generate the hazard event set from netCDF footprints
-        % ====================================================
-        hazard_era20c=wisc_hazard_set([wisc_dir filesep 'fp_era20c_*.nc'],0,'WISC_era20c_eur_WS');
+    if exist('hazard_era20c','var') && exist('hazard_eraint','var')
+        fprintf('NOTE: using previously loaded hazard_era20c and hazard_eraint\n');
     else
-        fprintf('NOTE: loading previously calculated hazard_era20c ...\n');
-        hazard_era20c=climada_hazard_load(hazard_era20c_file,1);
-    end
-    
-    hazard_eraint_file=[climada_global.hazards_dir filesep 'WISC_eraint_eur_WS.mat'];
-    if ~exist(hazard_eraint_file,'file')
-        hazard_eraint=wisc_hazard_set([wisc_dir filesep 'fp_eraint_*.nc'],0,'WISC_eraint_eur_WS');
-    else
-        fprintf('NOTE: loading previously calculated hazard_eraint ...\n');
-        hazard_eraint=climada_hazard_load(hazard_eraint_file,1);
+        
+        hazard_era20c_file=[climada_global.hazards_dir filesep 'WISC_era20c_eur_WS.mat'];
+        if ~exist(hazard_era20c_file,'file')
+            % generate the hazard event set from netCDF footprints
+            % ====================================================
+            hazard_era20c=wisc_hazard_set([wisc_dir filesep 'fp_era20c_*.nc'],0,'WISC_era20c_eur_WS');
+        else
+            fprintf('NOTE: loading previously calculated hazard_era20c ...\n');
+            hazard_era20c=climada_hazard_load(hazard_era20c_file,1);
+        end
+        
+        hazard_eraint_file=[climada_global.hazards_dir filesep 'WISC_eraint_eur_WS.mat'];
+        if ~exist(hazard_eraint_file,'file')
+            hazard_eraint=wisc_hazard_set([wisc_dir filesep 'fp_eraint_*.nc'],0,'WISC_eraint_eur_WS');
+        else
+            fprintf('NOTE: loading previously calculated hazard_eraint ...\n');
+            hazard_eraint=climada_hazard_load(hazard_eraint_file,1);
+        end
+        
+        fprintf('NOTE: combining hazard_era20c and hazard_eraint into one hazard set\n');
+
+        hazard=climada_hazard_merge(hazard_era20c,hazard_eraint,'events');
+        hazard=rmfield(hazard,'lonlat_size');
+        save(hazard_wisc_file,'hazard','-v7.3');
+        hazard_wisc=hazard;clear hazard_wisc
+        
     end
 end
 
@@ -122,23 +149,32 @@ end
 
 if plot_hazard
     % one could also use climada_hazard_plot, which contours the plot, but slower
-    figure;res=climada_hazard_plot_nogrid(hazard_era20c, 0,1); % max intensity at each centroid
-    title(['ERA 20c ' res.title_str]) % just to show also source of footprints
-    if sok,saveas(gcf,[fig_dir filesep 'ERA20c_max_intens.' fig_ext],fig_ext);end
-    figure;res=climada_hazard_plot_nogrid(hazard_era20c,-1,1); % strongest storm
-    title(['ERA 20c ' res.title_str]) % just to show also source of footprints
-    if sok,saveas(gcf,[fig_dir filesep 'ERA20c_max_storm.' fig_ext],fig_ext);end
-    figure;res=climada_hazard_plot_nogrid(hazard_eraint, 0,1); % max intensity at each centroid
-    title(['ERA int ' res.title_str]) % just to show also source of footprints
-    if sok,saveas(gcf,[fig_dir filesep 'ERAint_max_intens.' fig_ext],fig_ext);end
-    figure;res=climada_hazard_plot_nogrid(hazard_eraint,-1,1); % strongest storm
-    title(['ERA int ' res.title_str]) % just to show also source of footprints
-    if sok,saveas(gcf,[fig_dir filesep 'ERAint_max_storm.' fig_ext],fig_ext);end
+    if show_BOTH_separate
+        figure;res=climada_hazard_plot_nogrid(hazard_era20c, 0,1); % max intensity at each centroid
+        title(['ERA 20c ' res.title_str]) % just to show also source of footprints
+        if sok,saveas(gcf,[fig_dir filesep 'ERA20c_max_intens.' fig_ext],fig_ext);end
+        figure;res=climada_hazard_plot_nogrid(hazard_era20c,-1,1); % strongest storm
+        title(['ERA 20c ' res.title_str]) % just to show also source of footprints
+        if sok,saveas(gcf,[fig_dir filesep 'ERA20c_max_storm.' fig_ext],fig_ext);end
+        figure;res=climada_hazard_plot_nogrid(hazard_eraint, 0,1); % max intensity at each centroid
+        title(['ERA int ' res.title_str]) % just to show also source of footprints
+        if sok,saveas(gcf,[fig_dir filesep 'ERAint_max_intens.' fig_ext],fig_ext);end
+        figure;res=climada_hazard_plot_nogrid(hazard_eraint,-1,1); % strongest storm
+        title(['ERA int ' res.title_str]) % just to show also source of footprints
+        if sok,saveas(gcf,[fig_dir filesep 'ERAint_max_storm.' fig_ext],fig_ext);end
+    else
+        figure;res=climada_hazard_plot_nogrid(hazard_wisc, 0,1); % max intensity at each centroid
+        title(['WISC ' res.title_str]) % just to show also source of footprints
+        if sok,saveas(gcf,[fig_dir filesep 'WISC_max_intens.' fig_ext],fig_ext);end
+        figure;res=climada_hazard_plot_nogrid(hazard_wisc,-1,1); % strongest storm
+        title(['WISC ' res.title_str]) % just to show also source of footprints
+        if sok,saveas(gcf,[fig_dir filesep 'WISC_max_storm.' fig_ext],fig_ext);end
+    end
 end
 
 % loop over countries for a first impression
 
-entity_combined=[];EDS_era20c=[];EDS_eraint=[];EDS_std_comb=[];  % init
+entity_combined=[];EDS_era20c=[];EDS_eraint=[];EDS_std_comb=[];EDS_wisc=[];  % init
 em_data_ET_tot=[];em_data_ET_tot.year=[];em_data_ET_tot.damage=[];em_data_ET_tot.damage_orig=[]; % init
 em_data_ST_tot=[];em_data_ST_tot.year=[];em_data_ST_tot.damage=[];em_data_ST_tot.damage_orig=[]; % init
 
@@ -184,10 +220,15 @@ for country_i=1:length(country_names)
     % ===============================================
     % EDS = event damage set
     clear EDS % just in case we call this batch code again
-    EDS(1)=climada_EDS_calc(entity,hazard_era20c);
-    EDS(2)=climada_EDS_calc(entity,hazard_eraint); % assume same hazard resolution
-    EDS(1).annotation_name='ERA 20c'; % as the name got long
-    EDS(2).annotation_name='ERA int';
+    if show_BOTH_separate
+        EDS(1)=climada_EDS_calc(entity,hazard_era20c);
+        EDS(2)=climada_EDS_calc(entity,hazard_eraint); % assume same hazard resolution
+        EDS(1).annotation_name='ERA 20c'; % as the name got long
+        EDS(2).annotation_name='ERA int';
+    else
+        EDS(1)=climada_EDS_calc(entity,hazard_wisc);
+        EDS(1).annotation_name='WISC'; % as the name got long
+    end
     
     
     % plot the exceedance damage frequency curves (DFC)
@@ -219,8 +260,12 @@ for country_i=1:length(country_names)
     end % climada_global.octave_mode
     
     % some data collection (for annual aggregate further below)
-    EDS_era20c                 = climada_EDS_combine(EDS_era20c,EDS(1));
-    EDS_eraint                 = climada_EDS_combine(EDS_eraint,EDS(2));
+    if show_BOTH_separate
+        EDS_era20c                 = climada_EDS_combine(EDS_era20c,EDS(1));
+        EDS_eraint                 = climada_EDS_combine(EDS_eraint,EDS(2));
+    else
+        EDS_wisc                   = climada_EDS_combine(EDS_wisc,EDS(1));
+    end
     
     % load the standard hazard set for this country (if exists)
     hazard_std_file=[climada_global.hazards_dir filesep ISO3_country_name '_eur_WS.mat'];
@@ -255,32 +300,50 @@ for country_i=1:length(country_names)
     
     if plot_hazard
         % one could also use climada_hazard_plot, which contours the plot, but slower
-        [~,max_pos]=max(EDS(1).damage);
-        figure;res=climada_hazard_plot_nogrid(hazard_era20c,max_pos,1); % max intensity at each centroid
-        title(['ERA 20c ' res.yyyymmdd_str ' most damaging for ' country_ISO3_title]);
-        xlabel(sprintf('damage %2.0f mio USD',EDS(1).damage(max_pos)/1e6));ylabel('');
-        if sok,saveas(gcf,[fig_dir filesep ISO3_country_name '_ERA20c_max_damage.' fig_ext],fig_ext);end
-        [~,max_pos]=max(EDS(2).damage);
-        figure;res=climada_hazard_plot_nogrid(hazard_eraint,max_pos,1); % max intensity at each centroid
-        title(['ERA int ' res.yyyymmdd_str ' most damaging for ' country_ISO3_title]);
-        xlabel(sprintf('damage %2.0f mio USD',EDS(2).damage(max_pos)/1e6));ylabel('');
-        if sok,saveas(gcf,[fig_dir filesep ISO3_country_name '_ERAint_max_damage.' fig_ext],fig_ext);end
+        if show_BOTH_separate
+            [~,max_pos]=max(EDS(1).damage);
+            figure;res=climada_hazard_plot_nogrid(hazard_era20c,max_pos,1); % max intensity at each centroid
+            title(['ERA 20c ' res.yyyymmdd_str ' most damaging for ' country_ISO3_title]);
+            xlabel(sprintf('damage %2.0f mio USD',EDS(1).damage(max_pos)/1e6));ylabel('');
+            if sok,saveas(gcf,[fig_dir filesep ISO3_country_name '_ERA20c_max_damage.' fig_ext],fig_ext);end
+            [~,max_pos]=max(EDS(2).damage);
+            figure;res=climada_hazard_plot_nogrid(hazard_eraint,max_pos,1); % max intensity at each centroid
+            title(['ERA int ' res.yyyymmdd_str ' most damaging for ' country_ISO3_title]);
+            xlabel(sprintf('damage %2.0f mio USD',EDS(2).damage(max_pos)/1e6));ylabel('');
+            if sok,saveas(gcf,[fig_dir filesep ISO3_country_name '_ERAint_max_damage.' fig_ext],fig_ext);end
+        else
+            [~,max_pos]=max(EDS(1).damage);
+            figure;res=climada_hazard_plot_nogrid(hazard_wisc,max_pos,1); % max intensity at each centroid
+            title(['WISC ' res.yyyymmdd_str ' most damaging for ' country_ISO3_title]);
+            xlabel(sprintf('damage %2.0f mio USD',EDS(1).damage(max_pos)/1e6));ylabel('');
+            if sok,saveas(gcf,[fig_dir filesep ISO3_country_name '_WISC_max_damage.' fig_ext],fig_ext);end
+        end
     else
         fprintf('Note: hazard plots suppressed for speedup\n');
     end
     
 end % country_i
 
-EDS_era20c(1).annotation_name='ERA20c'; % as the name got long
-EDS_eraint(1).annotation_name='ERAint';
+if show_BOTH_separate
+    EDS_era20c(1).annotation_name='ERA20c'; % as the name got long
+    EDS_eraint(1).annotation_name='ERAint';
+else
+    EDS_wisc(1).annotation_name='WISC'; % as the name got long
+end
 
 % plot combined (pan-European) annual aggregate DFC
 % -------------------------------------------------
 
-YDS_era20c=climada_EDS2YDS(EDS_era20c,hazard_era20c);
-YDS_eraint=climada_EDS2YDS(EDS_eraint,hazard_eraint);
-figure;[~,~,legend_str,legend_handle]=climada_EDS_DFC(YDS_era20c,YDS_eraint);title('combined annual aggregate DFC')
-if sok,saveas(gcf,[fig_dir filesep 'combined_aggregate_DFC.' fig_ext],fig_ext);end
+if show_BOTH_separate
+    YDS_era20c=climada_EDS2YDS(EDS_era20c,hazard_era20c);
+    YDS_eraint=climada_EDS2YDS(EDS_eraint,hazard_eraint);
+    figure;[~,~,legend_str,legend_handle]=climada_EDS_DFC(YDS_era20c,YDS_eraint);title('combined annual aggregate DFC')
+    if sok,saveas(gcf,[fig_dir filesep 'combined_aggregate_DFC.' fig_ext],fig_ext);end
+else
+    YDS_wisc=climada_EDS2YDS(EDS_wisc,hazard_wisc);
+    figure;[~,~,legend_str,legend_handle]=climada_EDS_DFC(YDS_wisc);title('combined annual aggregate DFC')
+    if sok,saveas(gcf,[fig_dir filesep 'combined_aggregate_DFC.' fig_ext],fig_ext);end
+end
 
 % add EM-DAT (we need to construct the DFC here first)
 % ----------------------------------------------------
