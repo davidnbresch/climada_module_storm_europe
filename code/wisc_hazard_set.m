@@ -78,11 +78,8 @@ function [hazard,nc]=wisc_hazard_set(wisc_file,check_plot,hazard_filename)
 % David N. Bresch, david.bresch@gmail.com, 20170730, save for Octave compatibility
 % David N. Bresch, david.bresch@gmail.com, 20170801, NaN set to zero
 % David N. Bresch, david.bresch@gmail.com, 20171004, checked again, works fine
-<<<<<<< HEAD
-% David N. Bresch, david.bresch@gmail.com, 20171108, double file excluded
-=======
 % Thomas R??sli, thomas.roeoesli@usys.ethz.ch, 20171024, added orig_yearset for later use in climada_EDS2YDS
->>>>>>> origin/master
+% David N. Bresch, david.bresch@gmail.com, 20171108, double file excluded
 %-
 
 hazard=[]; % init output
