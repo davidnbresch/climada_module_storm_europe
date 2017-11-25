@@ -59,8 +59,8 @@ if ~climada_init_vars,return;end % init/import global variables
 show_BOTH_separate=0; % default=0
 %
 % define the TEST country or -ies (at least one)
-%country_names={'GBR','IRL','DEU','FRA','DNK','NLD','BEL','CHE','AUT','ESP'}; % name like 'United Kingdom' or ISO3 code like 'GBR'
-country_names={'GBR','DEU','FRA'}; % name like 'United Kingdom' or ISO3 code like 'GBR'
+country_names={'GBR','IRL','DEU','FRA','DNK','NLD','BEL','CHE','AUT','ESP'}; % name like 'United Kingdom' or ISO3 code like 'GBR'
+%country_names={'GBR','DEU','FRA'}; % name like 'United Kingdom' or ISO3 code like 'GBR'
 %country_names={'GBR'}; % name like 'United Kingdom' or ISO3 code like 'GBR'
 %country_names={'GBR','IRL','DEU','FRA','DNK','NLD','BEL','CHE','ESP'}; % name like 'United Kingdom' or ISO3 code like 'GBR'
 %country_names={'GBR','DEU','FRA'}; % name like 'United Kingdom' or ISO3 code like 'GBR'
