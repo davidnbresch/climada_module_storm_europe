@@ -415,7 +415,17 @@ end
 
 
 wisc_dir='D:\Documents_DATA\WISC_data_20170918\Synthetic Event Set'; % or change it to the folder with the unpacked synthetic event set footprints downloaded from WISC
-
+if ~isdir(wisc_dir)
+    fprintf('Please locate the WISC synthetic event set folder:\n');
+    wisc_dir = uigetdir(climada_global.data_dir, 'Locate WISC synthetic event set folder:');
+    if isequal(filename,0) || isequal(pathname,0)
+        fprintf('No WISC synthetic event set folder selected\n');
+        fprintf(['> visit <a href="https://wisc.climate.copernicus.eu/wisc/#/help/products">'...
+            'https://wisc.climate.copernicus.eu/wisc/#/help/products</a>\n',...
+            '  and download C3S_WISC_EVENT_SET_PART1_0100.tgz etc.\n']);
+        return
+    end
+end % ~isdir(wisc_dir)
 
 
 % create hazard out of WISC synthetic event set. save one member each variable/file for better memory matching
