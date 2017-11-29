@@ -27,6 +27,7 @@ function res=schwierz_etal_2010(return_period)
 % MODIFICATION HISTORY:
 % David N. Bresch, david.bresch@gmail.com, 20170505, initial
 % David N. Bresch, david.bresch@gmail.com, 20170507, figure as in paper
+% David N. Bresch, david.bresch@gmail.com, 20171129, entities generated
 %-
 
 res=[]; % init output
@@ -53,6 +54,12 @@ n_climate_models=length(climate_model);
 % init
 res.CTL=zeros(n_countries+1,n_climate_models);
 res.A2 =res.CTL;
+
+% construct the asset base
+for country_i=1:n_countries
+    entity=climada_entity_load(country_ISO3{country_i},-1); % try to load, silent mode
+    if isempty(entity),entity=climada_entity_country(country_ISO3{country_i});end % construct it
+end
 
 % construct the combined entity
 entity_EUR=climada_entity_load(country_ISO3{1});
