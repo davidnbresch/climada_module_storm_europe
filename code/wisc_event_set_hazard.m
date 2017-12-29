@@ -74,7 +74,7 @@ function [hazard,nc]=wisc_event_set_hazard(wisc_file,check_plot,hazard_filename)
 %        wind=reshape(hazard.intensity(1,c),hazard.lonlat_size)
 %   nc: the content of the netCDF file (for check, info of the first file)
 % MODIFICATION HISTORY:
-% Thomas R??sli, thomas.roeoesli@usys.ethz.ch, 20170921, initial
+% Thomas Roeoesli, thomas.roeoesli@usys.ethz.ch, 20170921, initial
 % 
 %-
 

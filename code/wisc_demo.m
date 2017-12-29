@@ -64,7 +64,7 @@ country_names={'GBR','IRL','DEU','FRA','DNK','NLD','BEL','CHE','AUT','ESP'}; % n
 %country_names={'GBR'}; % name like 'United Kingdom' or ISO3 code like 'GBR'
 %country_names={'GBR','IRL','DEU','FRA','DNK','NLD','BEL','CHE','ESP'}; % name like 'United Kingdom' or ISO3 code like 'GBR'
 %country_names={'GBR','DEU','FRA'}; % name like 'United Kingdom' or ISO3 code like 'GBR'
-%country_names={'GBR'}; % name like 'United Kingdom' or ISO3 code like 'GBR'
+country_names={'GBR'}; % name like 'United Kingdom' or ISO3 code like 'GBR'
 %country_names={'Germany','Switzerland'}; % name like 'United Kingdom' or ISO3 code like 'GBR'
 %
 % local folder with the WISC netCDF storm footprints
