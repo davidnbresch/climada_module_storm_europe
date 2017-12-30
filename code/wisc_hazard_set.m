@@ -1,4 +1,4 @@
-function [hazard,nc]=wisc_hazard_set(wisc_file,check_plot,hazard_filename,n_prob_events,add_on_land)
+function [hazard,nc]=wisc_hazard_set(wisc_file,check_plot,hazard_filename,n_prob_events,add_on_land,add_fraction)
 % climada WS Europe WISC Copernicus
 % MODULE:
 %   storm_europe
@@ -21,10 +21,11 @@ function [hazard,nc]=wisc_hazard_set(wisc_file,check_plot,hazard_filename,n_prob
 %   time over all files and all timesteps therein to extract the wind
 %   speed.
 %
-%   The code is pretty fast, except for detrmining the on_land points.Since
+%   The code is pretty fast, except for determining the on_land points. Since
 %   this takes long (easiyl an hour, as inpolygon needs to deal with 1.5
 %   mio points), the result is saved in a special file in the results
-%   folder, named 'WISC_hazard_plus.mat');
+%   folder, named 'WISC_hazard_plus.mat'); Use climada_global.parfor=1 to
+%   at least sped up the addition of the coastal buffer.
 %
 %   NOTE: if climada_global.save_file_version is set to ='-v7' to allow hazard sets to
 %   be read in Octave, too, hazard.fraction is not saved, but re-processed
@@ -46,6 +47,7 @@ function [hazard,nc]=wisc_hazard_set(wisc_file,check_plot,hazard_filename,n_prob
 %   % create hazard set for ear20c and eraint separately
 %   hazard=wisc_hazard_set('{wisc_dir}fp_era20c_*.nc')
 %   hazard=wisc_hazard_set('{wisc_dir}fp_eraint_*.nc')
+%   hazard=wisc_hazard_set('{wisc_dir}fp_era20c_*.nc',0,'',20,1); % probabilistic
 %
 %   % in either case, use the following to calculate damages
 %   entity=climada_entity_country('DNK');
@@ -75,6 +77,8 @@ function [hazard,nc]=wisc_hazard_set(wisc_file,check_plot,hazard_filename,n_prob
 %   add_on_land: if =1, add hazard.on_land (default), =0 not (speeds up)
 %       hazard.on_land is used for example for correct ssi calculation (see
 %       climada_hazard_ssi). For wisc_file='test', add_on_land is set =0
+%   add_fraction: if =1, add hazard.fraction. Default =0, since time consuming
+%       and not required for WS.
 % OUTPUTS:
 %   hazard: a climada hazard even set structure, see e.g. climada_tc_hazard_set
 %       for a detailed description of all fields. Key fields are:
@@ -109,9 +113,10 @@ function [hazard,nc]=wisc_hazard_set(wisc_file,check_plot,hazard_filename,n_prob
 % David N. Bresch, david.bresch@gmail.com, 20170730, save for Octave compatibility
 % David N. Bresch, david.bresch@gmail.com, 20170801, NaN set to zero
 % David N. Bresch, david.bresch@gmail.com, 20171004, checked again, works fine
-% Thomas R??sli, thomas.roeoesli@usys.ethz.ch, 20171024, added orig_yearset for later use in climada_EDS2YDS
-% David N. Bresch, david.bresch@gmail.com, 20171108, double file excluded
+% Thomas Roeoesli, thomas.roeoesli@usys.ethz.ch, 20171024, added orig_yearset for later use in climada_EDS2YDS
+% David N. Bresch, david.bresch@gmail.com, 20171108, double file fp_era20c_1990012515_701_0 excluded
 % David N. Bresch, david.bresch@gmail.com, 20171229, option '{dir}__both' and fields hazard.area_km2 and hazard.on_land added
+% David N. Bresch, david.bresch@gmail.com, 20171230, hazard.on_landcoast added
 %-
 
 hazard=[]; % init output
@@ -128,6 +133,7 @@ if ~exist('check_plot','var'),      check_plot      = 0;end
 if ~exist('hazard_filename','var'), hazard_filename ='';end
 if ~exist('n_prob_events','var'),   n_prob_events   = 0;end
 if ~exist('add_on_land','var'),     add_on_land     = 1;end
+if ~exist('add_fraction','var'),    add_fraction    = 0;end
 
 % locate the module's (or this code's) data folder (usually  a folder
 % 'parallel' to the code folder, i.e. in the same level as code folder)
@@ -153,6 +159,7 @@ exclude_file='fp_era20c_1990012515_701_0.nc';
 %
 % the default map border file, just in case somebody would like to use something else
 admin0_shape_file=climada_global.map_border_file; % only used if add_on_land=1
+coastal_buffer_km=50; % buffer [km] around coast to keep centroids/info near the coast
 % the filename where on_land flag is stored (since calculation very time consuming)
 hazard_plus.filename=[climada_global.results_dir filesep 'WISC_hazard_plus.mat'];
 
@@ -199,7 +206,7 @@ elseif strcmpi(wisc_file(end-5:end),'__both')
     hazard=climada_hazard_merge(hazard_era20c,hazard_eraint,'events');
     hazard=rmfield(hazard,'lonlat_size');
     hazard.filename = [climada_global.hazards_dir filesep 'WISC_eur_WS' hist_ext '.mat'];
-    fprintf('> saving combined historic hazard as %s\n',hazard.filename);
+    fprintf('> saving combined hazard as %s\n',hazard.filename);
     save(hazard.filename,'hazard',climada_global.save_file_version);
     return
 else
@@ -234,8 +241,8 @@ end
 n_events=0;exclude_file_i=0; % init
 for file_i=1:n_files
     wisc_file_1=[wisc_dir filesep wisc_files(file_i).name];
-    fprintf('pre-processing %s',wisc_file_1);
     if file_i==1 % take grid info from first file
+        fprintf('pre-processing %s',wisc_file_1);
         nc.info = ncinfo(wisc_file_1);
         nc.lat  = ncread(wisc_file_1,'latitude');
         nc.lon  = ncread(wisc_file_1,'longitude');
@@ -243,7 +250,7 @@ for file_i=1:n_files
         if size(nc.lat,2)==1,[nc.lat,nc.lon] = meshgrid(nc.lat,nc.lon);end
         
         % add the area [km2] per centroid (111.12 is length of 1 deg in km at equator)
-        fprintf(' (first file, reading lat/lon and calculating centroid area)');
+        fprintf('\n> first file, reading lat/lon and calculating centroid area)');
         nc.area_km2=abs(nc.lon(2:end,2:end)-nc.lon(1:end-1,1:end-1))...
             .*cos(nc.lat(1:end-1,1:end-1)./180.*pi)*111.12 .* ...
             abs(nc.lat(2:end,2:end)-nc.lat(1:end-1,1:end-1))*111.12;
@@ -251,7 +258,8 @@ for file_i=1:n_files
         nc.area_km2(end+1,:)=nc.area_km2(end,:);
         nc.area_km2(:,end+1)=nc.area_km2(:,end);
         %hist(reshape(nc.area_km2,1,numel(nc.area_km2))),xlabel('km^2') % to check
-        
+    else
+        fprintf('pre-processing %s',wisc_files(file_i).name);
     end
     
     % exclude one file that exists twice (for comparison)
@@ -271,8 +279,96 @@ if exclude_file_i>0
     n_files=length(wisc_files);
 end
 
+n_centroids             = numel(nc.lon);
+hazard.lonlat_size      = size(nc.lon);
+hazard.lon              = reshape(nc.lon,1,n_centroids);
+hazard.lat              = reshape(nc.lat,1,n_centroids);
+hazard.area_km2         = reshape(nc.area_km2,1,n_centroids); % to check: hist(hazard.area_km2),xlabel('km^2')
+
+if add_on_land % add a flag to identify centroids on land
+    
+    if exist(hazard_plus.filename,'file')
+        load(hazard_plus.filename)
+        if sum(abs(hazard_plus.lon-hazard.lon))+sum(abs(hazard_plus.lat-hazard.lat))<1000*eps
+            hazard.on_land      = hazard_plus.on_land;
+            hazard.on_landcoast = hazard_plus.on_landcoast;
+        else
+            fprintf('WARNING: hazard.on_land not added (mismatch with grid definition)\n');
+            fprintf('>> delete %s first, re-run %s\n',hazard_plus.filename,mfilename);
+        end
+    else
+        hazard.BoundingBox(1,1)=min(hazard.lon);
+        hazard.BoundingBox(2,1)=max(hazard.lon);
+        hazard.BoundingBox(1,2)=min(hazard.lat);
+        hazard.BoundingBox(2,2)=max(hazard.lat);
+        hazard_rect_x=[hazard.BoundingBox(1,1) hazard.BoundingBox(1,1) hazard.BoundingBox(2,1) hazard.BoundingBox(2,1) hazard.BoundingBox(1,1)];
+        hazard_rect_y=[hazard.BoundingBox(1,2) hazard.BoundingBox(2,2) hazard.BoundingBox(2,2) hazard.BoundingBox(1,2) hazard.BoundingBox(1,2)];
+        fprintf('> adding hazard.on_land (takes time!): ');
+        climada_progress2stdout    % init, see terminate below
+        t0 = clock;
+        hazard.on_land=hazard.lon*0; % init
+        admin0_shapes=climada_shaperead(admin0_shape_file);
+        
+        for shape_i=1:length(admin0_shapes)
+            % first check for hazard area within country
+            
+            % re-define BoundingBox, as some countries include still their
+            % DOM/TOMs (ie BoundingBox from iriginal shape file, while X
+            % and Y adjusted for climada). Norway (NOR, shape_i=170) is such a case
+            admin0_shapes(shape_i).BoundingBox(1,1)=min(admin0_shapes(shape_i).X);
+            admin0_shapes(shape_i).BoundingBox(2,1)=max(admin0_shapes(shape_i).X);
+            admin0_shapes(shape_i).BoundingBox(1,2)=min(admin0_shapes(shape_i).Y);
+            admin0_shapes(shape_i).BoundingBox(2,2)=max(admin0_shapes(shape_i).Y);
+            
+            country_rect_x=[admin0_shapes(shape_i).BoundingBox(1,1) admin0_shapes(shape_i).BoundingBox(1,1) admin0_shapes(shape_i).BoundingBox(2,1) admin0_shapes(shape_i).BoundingBox(2,1) admin0_shapes(shape_i).BoundingBox(1,1)];
+            country_rect_y=[admin0_shapes(shape_i).BoundingBox(1,2) admin0_shapes(shape_i).BoundingBox(2,2) admin0_shapes(shape_i).BoundingBox(2,2) admin0_shapes(shape_i).BoundingBox(1,2) admin0_shapes(shape_i).BoundingBox(1,2)];
+            hinc=sum(climada_inpolygon(hazard_rect_x,hazard_rect_y,country_rect_x,country_rect_y)); % hazard in country rect
+            cinh=sum(climada_inpolygon(country_rect_x,country_rect_y,hazard_rect_x,hazard_rect_y)); % country in hazard rect
+            if sum(hinc+cinh)>0 % only check for centroids, if BoundingBoxes intersect
+                fprintf('\n%s\n',admin0_shapes(shape_i).NAME);
+                country_hit=climada_inpolygon(hazard.lon,hazard.lat,admin0_shapes(shape_i).X,admin0_shapes(shape_i).Y);
+                hazard.on_land(country_hit)=1;
+            end
+            climada_progress2stdout(shape_i,length(admin0_shapes),10,'countries'); % update
+        end % shape_i
+        climada_progress2stdout(0) % terminate
+        t_elapsed = etime(clock,t0);
+        fprintf('done, took %3.2f sec. \n',t_elapsed);
+        
+        hazard.on_land=logical(hazard.on_land);
+        
+        % add a boundary zone (coastal waters)
+        hazard.on_landcoast=hazard.on_land;
+        water_points=hazard.on_landcoast == 0;
+        % check with: plot(hazard.lon(water_points),hazard.lat(water_points),'.b','MarkerSize',0.001);hold on
+        distance_km=climada_distance2coast_km(hazard.lon(water_points),hazard.lat(water_points));
+        coastal_points=distance_km<coastal_buffer_km;
+        wp=hazard.on_landcoast(water_points);wp(coastal_points)=1;
+        hazard.on_landcoast(water_points)=wp;
+        % check with: plot(hazard.lon(hazard.on_landcoast),hazard.lat(hazard.on_landcoast),'.g','MarkerSize',0.001);hold on
+        % check with: plot(hazard.lon(hazard.on_land),hazard.lat(hazard.on_land),'.r','MarkerSize',0.0001)
+        
+        fprintf('%2.2i%% water points, thereof %2.2i%% coastal points\n',ceil(sum(water_points)/n_centroids*100),ceil(sum(coastal_points)/sum(water_points)*100));
+        
+        hazard_plus.lon          = hazard.lon;
+        hazard_plus.lat          = hazard.lat;
+        hazard_plus.lonlat_size  = hazard.lonlat_size;
+        hazard_plus.on_land      = hazard.on_land;
+        hazard_plus.on_landcoast = hazard.on_landcoast;
+        hazard_plus.area_km2     = hazard.area_km2;
+        
+        % check with: plot(hazard_plus.lon(hazard_plus.on_landcoast),hazard_plus.lat(hazard_plus.on_landcoast),'.g','MarkerSize',0.001);hold on
+        % check with: plot(hazard_plus.lon(hazard_plus.on_land),     hazard_plus.lat(hazard_plus.on_land),'.r','MarkerSize',0.0001)
+        
+        fprintf('> saving area and on_land as as %s\n',hazard_plus.filename);
+        save(hazard_plus.filename,'hazard_plus',climada_global.save_file_version);
+        clear hazard_plus
+        
+    end % exist(hazard_plus.filename,'file')
+    
+end % add_on_land
+
 % allocate the hazard set
-n_centroids=numel(nc.lon);
 hazard.intensity=spalloc(n_events*(n_prob_events+1),n_centroids,ceil(n_events*(n_prob_events+1)*n_centroids*matrix_density));
 
 fprintf('> converting %i files with total %i timesteps: ',n_files,n_events);
@@ -287,9 +383,16 @@ hazard.event_ID=zeros(1,(n_prob_events+1)*n_times);
 hazard.orig_event_flag=zeros(1,(n_prob_events+1)*n_times);
 
 next_i=1; % init
-climada_progress2stdout    % init, see terminate below
+%climada_progress2stdout    % init, see terminate below
+climada_progress2stdout(-1,[],2) % init with mod_step 2 insted of 10
 t0       = clock;
+
+% guess_nnz=ceil((n_prob_events+1)*n_times*n_centroids*matrix_density);
+% intensity_i=zeros(1,guess_nnz);intensity_j=zeros(1,guess_nnz);intensity_v=zeros(1,guess_nnz);iii=1;intensity_n=0; % init
+
 for file_i=1:n_files
+    %for file_i=1:10 % for TEST
+    
     if length(wisc_files(file_i).name)>2
         wisc_file_1=[wisc_dir filesep wisc_files(file_i).name];
         nc.time = ncread(wisc_file_1,'time');
@@ -299,10 +402,24 @@ for file_i=1:n_files
             if file_i==1 && time_i==1,nc.wind = temp_data;end % first one stored for checks
             temp_data(temp_data<wind_threshold)=0;
             if n_prob_events>0
+                
+                temp_data(~hazard.on_landcoast)=0; % keep only values onland and coastal buffer
+                % check plot:
+                %figure('Name','WISC footprint','Color',[1 1 1]);
+                %[c,h] = contour(nc.lon,nc.lat,temp_data);clabel(c,h)
+                %hold on; climada_plot_world_borders(2,'','',1);
+                
                 [intensity_prob,n_prob_events]=climada_ws_hist2prob(double(temp_data));
                 i1=1+(next_i-1)*(n_prob_events+1);
                 i2=  (next_i  )*(n_prob_events+1);
-                hazard.intensity(i1:i2,:) = intensity_prob;
+                hazard.intensity(i1:i2,:) = sparse(intensity_prob);
+                
+                %                 [intensity_i,intensity_j,intensity_v] = find(intensity_prob);
+                %                 intensity_i(1,intensity_n+1:intensity_n+gust_n)=gust_i+e1-1; % convert to absolute number of node
+                %                 intensity_j(1,intensity_n+1:intensity_n+gust_n)=gust_j;
+                %                 intensity_v(1,intensity_n+1:intensity_n+gust_n)=gust_v;
+                %                 intensity_n=intensity_n+gust_n;
+                
                 hazard.event_ID( i1:i2)   = next_i*100+(1:n_prob_events+1)-1;
                 hazard.orig_event_flag(i1)=1;
             else
@@ -324,12 +441,12 @@ for file_i=1:n_files
     end
 end % file i
 climada_progress2stdout(0) % terminate
-t_elapsed = etime(clock,t0);
-fprintf('done, took %3.2f sec. \n',t_elapsed);
+t_elapsed_footprints = etime(clock,t0);
+fprintf('done, took %3.2f sec. \n',t_elapsed_footprints);
 
 hazard.intensity(isnan(hazard.intensity))=0; % all NaN to zero
 
-if check_plot
+if check_plot && TEST_MODE
     fprintf('contour plot ...');
     figure('Name','WISC footprint','Color',[1 1 1]);
     [c,h] = contour(nc.lon,nc.lat,nc.wind);
@@ -386,16 +503,12 @@ if create_yearset
     hazard.orig_yearset(year_i).event_count=event_count;
     hazard.orig_yearset(year_i).event_index=event_index;
     
-    t_elapsed = etime(clock,t0);
-    fprintf('done, took %3.2f sec. \n',t_elapsed);
+    t_elapsed_yearset = etime(clock,t0);
+    fprintf('done, took %3.2f sec. \n',t_elapsed_yearset);
     
 end % create_yearset
 
 % fill/complete hazard structure
-hazard.lonlat_size      = size(nc.lon);
-hazard.lon              = reshape(nc.lon,1,n_centroids);
-hazard.lat              = reshape(nc.lat,1,n_centroids);
-hazard.area_km2         = reshape(nc.area_km2,1,n_centroids); % to check: hist(hazard.area_km2),xlabel('km^2')
 hazard.centroid_ID      = 1:n_centroids;
 hazard.peril_ID         = 'WS';
 hazard.units            = 'm/s';
@@ -405,79 +518,33 @@ hazard.event_count      = n_events*(1+n_prob_events);
 hazard.orig_event_count = n_events;
 hazard.orig_years       = hazard.yyyy(end)-hazard.yyyy(1)+1;
 hazard.frequency        = (hazard.event_ID*0+1)/(hazard.orig_years*(1+n_prob_events));
-hazard.comment = sprintf('WISC WS hazard event set, footprints from %s',wisc_file);
-if ~strcmpi(climada_global.save_file_version,'-v7') % gets too big in Octave
+hazard.comment          = sprintf('WISC WS hazard event set, footprints from %s',wisc_file);
+if ~strcmpi(climada_global.save_file_version,'-v7') && add_fraction % gets too big in Octave
     hazard.fraction     = spones(hazard.intensity); % fraction 100%
 end
-
-if add_on_land % add a flag to identify centroids on land
-    
-    if exist(hazard_plus.filename,'file')
-        load(hazard_plus.filename)
-        if sum(abs(hazard_plus.lon-hazard.lon))+sum(abs(hazard_plus.lat-hazard.lat))<1000*eps
-            hazard.on_land=hazard_plus.on_land;
-        else
-            fprintf('WARNING: hazard.on_land not added (mismatch with grid definition)\n');
-            fprintf('>> delete %s first, re-run %s\n',hazard_plus.filename,mfilename);
-        end
-    else
-        hazard.BoundingBox(1,1)=min(hazard.lon);
-        hazard.BoundingBox(2,1)=max(hazard.lon);
-        hazard.BoundingBox(1,2)=min(hazard.lat);
-        hazard.BoundingBox(2,2)=max(hazard.lat);
-        hazard_rect_x=[hazard.BoundingBox(1,1) hazard.BoundingBox(1,1) hazard.BoundingBox(2,1) hazard.BoundingBox(2,1) hazard.BoundingBox(1,1)];
-        hazard_rect_y=[hazard.BoundingBox(1,2) hazard.BoundingBox(2,2) hazard.BoundingBox(2,2) hazard.BoundingBox(1,2) hazard.BoundingBox(1,2)];
-        fprintf('> adding hazard.on_land (takes time!): ');
-        climada_progress2stdout    % init, see terminate below
-        t0 = clock;
-        hazard.on_land=hazard.lon*0; % init
-        admin0_shapes=climada_shaperead(admin0_shape_file);
-        
-        for shape_i=1:length(admin0_shapes)
-            % first check for hazard area within country
-            country_rect_x=[admin0_shapes(shape_i).BoundingBox(1,1) admin0_shapes(shape_i).BoundingBox(1,1) admin0_shapes(shape_i).BoundingBox(2,1) admin0_shapes(shape_i).BoundingBox(2,1) admin0_shapes(shape_i).BoundingBox(1,1)];
-            country_rect_y=[admin0_shapes(shape_i).BoundingBox(1,2) admin0_shapes(shape_i).BoundingBox(2,2) admin0_shapes(shape_i).BoundingBox(2,2) admin0_shapes(shape_i).BoundingBox(1,2) admin0_shapes(shape_i).BoundingBox(1,2)];
-            hinc=sum(climada_inpolygon(hazard_rect_x,hazard_rect_y,country_rect_x,country_rect_y));
-            cinh=sum(climada_inpolygon(country_rect_x,country_rect_y,hazard_rect_x,hazard_rect_y));
-            if sum(hinc+cinh)>0 % only check for centroids, if BoundingBoxes intersect
-                fprintf('\n%s\n',admin0_shapes(shape_i).NAME);
-                country_hit=climada_inpolygon(hazard.lon,hazard.lat,admin0_shapes(shape_i).X,admin0_shapes(shape_i).Y);
-                hazard.on_land(country_hit)=1;
-            end
-            climada_progress2stdout(shape_i,length(admin0_shapes),10,'countries'); % update
-        end % shape_i
-        climada_progress2stdout(0) % terminate
-        t_elapsed = etime(clock,t0);
-        fprintf('done, took %3.2f sec. \n',t_elapsed);
-        
-        % check with
-        %plot(hazard.lon(hazard.on_land==1),hazard.lat(hazard.on_land==1),'.r','MarkerSize',0.0001)
-        
-        hazard_plus.lon         = hazard.lon;
-        hazard_plus.lat         = hazard.lat;
-        hazard_plus.lonlat_size = hazard.lonlat_size;
-        hazard_plus.on_land     = hazard.on_land;
-        hazard_plus.area_km2    = hazard.area_km2;
-        fprintf('> saving area and on_land as as %s\n',hazard_plus.filename);
-        save(hazard_plus.filename,'hazard_plus',climada_global.save_file_version);
-        
-    end % exist(hazard_plus.filename,'file')
-    
-end % add_on_land
+hazard.orig_event_flag  = logical(hazard.orig_event_flag); % convert to logical for indexing
+% later to be commented out, for timing
+hazard.t_elapsed_footprints = t_elapsed_footprints;
+hazard.t_elapsed_yearset    = t_elapsed_yearset;
 
 fprintf('> saving as %s\n',hazard.filename);
 save(hazard.filename,'hazard',climada_global.save_file_version);
 
-if check_plot && TEST_MODE
-    figure('Name','CLIMADA footprint','Color',[1 1 1]);
-    if n_prob_events>1
-        subplot(3,3,2),climada_hazard_plot_nogrid(hazard,3);title('North')
-        subplot(3,3,4),climada_hazard_plot_nogrid(hazard,4);title('West')
-        subplot(3,3,5),climada_hazard_plot_nogrid(hazard,1);title('original')
-        subplot(3,3,6),climada_hazard_plot_nogrid(hazard,5);title('East')
-        subplot(3,3,8),climada_hazard_plot_nogrid(hazard,2);title('South')
-    else
-        climada_hazard_plot_nogrid(hazard,1);title('single wind footprint')
+if check_plot
+    if TEST_MODE
+        figure('Name','CLIMADA footprint','Color',[1 1 1]);
+        if n_prob_events>1
+            subplot(3,3,2),climada_hazard_plot_nogrid(hazard,3);title('North')
+            subplot(3,3,4),climada_hazard_plot_nogrid(hazard,4);title('West')
+            subplot(3,3,5),climada_hazard_plot_nogrid(hazard,1);title('original')
+            subplot(3,3,6),climada_hazard_plot_nogrid(hazard,5);title('East')
+            subplot(3,3,8),climada_hazard_plot_nogrid(hazard,2);title('South')
+        else
+            climada_hazard_plot_nogrid(hazard,1);title('single wind footprint')
+        end
+    elseif n_prob_events>1
+        figure('Name','Storm Severity Index (SSI)','Color',[1 1 1]);
+        climada_hazard_ssi(hazard,1);
     end
 end
 

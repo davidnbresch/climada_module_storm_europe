@@ -1,4 +1,4 @@
-function [ssi,sorted_ssi,exceedence_freq]=climada_hazard_ssi(hazard,check_plot,windspeed_threshold_ms)
+function [ssi,ssi_sorted,xs_freq,ssi_orig,ssi_sorted_orig,xs_freq_orig]=climada_hazard_ssi(hazard,check_plot,windspeed_threshold_ms)
 % climada hazard winter storm ws ssi
 % MODULE:
 %   storm_europe
@@ -28,14 +28,16 @@ function [ssi,sorted_ssi,exceedence_freq]=climada_hazard_ssi(hazard,check_plot,w
 %   windspeed_threshold_ms: the windspeed threshold in m/s, default=22 (Lamb)
 % OUTPUTS:
 %   ssi(i): the ssi index for each event i
-%   sorted_ssi(j): same as ssi, sorted descendingly
-%   exceedence_freq(j): xs frequency for sorted_ssi(j). 
-%       Useful e.g. to plot(exceedence_freq,sorted_ssi);
+%   ssi_sorted(j): same as ssi, sorted descendingly
+%   xs_freq(j): xs frequency for ssi_sorted(j). 
+%       Useful e.g. to plot(xs_freq,ssi_sorted);
+%   *_orig: same as above, but for original events only (historic ones)
 % MODIFICATION HISTORY:
 % David N. Bresch, david.bresch@gmail.com, 20171229, initial
+% David N. Bresch, david.bresch@gmail.com, 20171230, ssi_orig added
 %-
 
-ssi=[]; % init output
+ssi=[];ssi_sorted=[];xs_freq=[];ssi_orig=[];ssi_sorted_orig=[];xs_freq_orig=[]; % init output
 
 %global climada_global
 if ~climada_init_vars,return;end % init/import global variables
@@ -108,20 +110,23 @@ fprintf('done, took %3.2f sec. \n',t_elapsed);
 ssi=ssi*1e-12; % arbitrary scaling
 % 8e-9 from old approach, close to Lamb
 
-[sorted_ssi,exceedence_freq]=climada_damage_exceedence(ssi,hazard.frequency,hazard.event_ID,1);
+[ssi_sorted,xs_freq]=climada_damage_exceedence(ssi,hazard.frequency,hazard.event_ID,1);
 
+if isfield(hazard,'orig_event_flag')
+        ssi_orig=ssi(logical(hazard.orig_event_flag));
+        frequency_orig=hazard.frequency(hazard.orig_event_flag)*hazard.event_count/hazard.orig_event_count;
+        [ssi_sorted_orig,xs_freq_orig]=climada_damage_exceedence(ssi_orig,frequency_orig,[],1);
+end
+
+    
 if check_plot
-    %return_period   = 1./exceedence_freq;
-    %plot(return_period,sorted_ssi);xlabel('return period (years)');ylabel('SSI');set(gcf,'Color',[1 1 1])
-    plot(exceedence_freq,sorted_ssi);
+    %return_period   = 1./xs_freq;
+    %plot(return_period,ssi_sorted);xlabel('return period (years)');ylabel('SSI');set(gcf,'Color',[1 1 1])
+    plot(xs_freq,ssi_sorted);
     xlabel('xs frequency (years)');ylabel('SSI (arbitrary units)');set(gcf,'Color',[1 1 1]);hold on
     
     if isfield(hazard,'orig_event_flag')
-        ssi_orig=ssi(logical(hazard.orig_event_flag));
-        %ssi_orig=ssi(hazard.orig_event_flag);
-        frequency_orig=hazard.frequency(hazard.orig_event_flag)*hazard.event_count/hazard.orig_event_count;
-        [sorted_ssi_orig,exceedence_freq_orig]=climada_damage_exceedence(ssi_orig,frequency_orig,[],1);
-        plot(exceedence_freq_orig,sorted_ssi_orig,'xr');
+        plot(xs_freq_orig,ssi_sorted_orig,'xr');
         legend({'all events','historic only'});
     end
 

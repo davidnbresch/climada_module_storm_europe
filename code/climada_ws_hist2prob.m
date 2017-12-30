@@ -28,9 +28,12 @@ function [intensity_prob,n_prob_events]=climada_ws_hist2prob(intensity2d,lonlat_
 %   lonlat_size: the size of intensity2d, only required if intensity2d is
 %       passed on as 1d array.
 % OUTPUTS:
-%   hazard: the probabilistic hazard event set
+%   intensity_prob(n_prob_events+1,n_centroids): the probabilistic
+%       intensity, first event is the original footprint, NOT sparse
+%   n_prob_events: the number of probabilistic events added
 % MODIFICATION HISTORY:
 % David N. Bresch, david.bresch@gmail.com, 20171229, initial
+% David N. Bresch, david.bresch@gmail.com, 20171230, NOT sparse returned
 %-
 
 intensity_prob=[];
@@ -116,6 +119,6 @@ for loop_i=1:5
     
 end % loop_i
 
-intensity_prob=sparse(intensity_prob); % sparsify
+%intensity_prob=sparse(intensity_prob); % sparsify
 
 end % climada_ws_hist2prob
