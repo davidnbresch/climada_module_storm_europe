@@ -17,6 +17,11 @@
 %
 %   copy results back local:   scp -r dbresch@euler.ethz.ch:/cluster/scratch/dbresch/climada_data/hazards/WISC_eur_WS.mat Documents/_GIT/climada_data/hazards/.
 %   copy results back polybox: scp -r dbresch@euler.ethz.ch:/cluster/scratch/dbresch/climada_data/hazards/WISC_eur_WS.mat /Users/bresch/polybox/WISC/hazards/.
+%
+%   in the (very unlikely) case you need to copy the climada code, too:
+%       scp -r Documents/_GIT/climada_modules/storm_europe/code dbresch@euler.ethz.ch:/cluster/home/dbresch/climada_modules/storm_europe/.
+%       scp -r Documents/_GIT/climada/code dbresch@euler.ethz.ch:/cluster/home/dbresch/climada/.
+%
 % CALLING SEQUENCE:
 %   bsub -R "rusage[mem=5000]" -n 24 matlab -nodisplay -singleCompThread -r job_WISC
 % EXAMPLE:
@@ -45,12 +50,13 @@ climada_global.parfor=1; % for parpool
 
 
 pool=parpool(N_pool_workers);
+
 for loop_i=1:2
     
     if loop_i==1
-        hazard_era20c=wisc_hazard_set([wisc_dir filesep 'fp_era20c_*.nc'],0,'WISC_era20c_eur_WS',20,1);
+        hazard_era20c=wisc_hazard_set([wisc_dir filesep 'fp_era20c_*.nc'],0,'WISC_era20c_eur_WS',20);
     else
-        hazard_eraint=wisc_hazard_set([wisc_dir filesep 'fp_eraint_*.nc'],0,'WISC_eraint_eur_WS',20,1);
+        hazard_eraint=wisc_hazard_set([wisc_dir filesep 'fp_eraint_*.nc'],0,'WISC_eraint_eur_WS',20);
     end
     
 end % loop_i

@@ -116,7 +116,7 @@ function [hazard,nc]=wisc_hazard_set(wisc_file,check_plot,hazard_filename,n_prob
 % Thomas Roeoesli, thomas.roeoesli@usys.ethz.ch, 20171024, added orig_yearset for later use in climada_EDS2YDS
 % David N. Bresch, david.bresch@gmail.com, 20171108, double file fp_era20c_1990012515_701_0 excluded
 % David N. Bresch, david.bresch@gmail.com, 20171229, option '{dir}__both' and fields hazard.area_km2 and hazard.on_land added
-% David N. Bresch, david.bresch@gmail.com, 20171230, hazard.on_landcoast added
+% David N. Bresch, david.bresch@gmail.com, 20171230, hazard.on_landcoast and FAST_TEST_AREA added
 %-
 
 hazard=[]; % init output
@@ -151,7 +151,6 @@ create_yearset = true; % default =true
 % define the TEST wind footprint
 %test_wisc_file=[module_data_dir filesep 'raw_windfields' filesep 'fp_3532_1999120318_historic_CF.nc'];
 test_wisc_file=[module_data_dir filesep 'raw_windfields' filesep 'fp_eraint_1999122606_507_0.nc']; % better, since same grid as we will use for real
-
 %
 % there is one event presetn both in ere20 and eraint for comparison, hence
 % we avoid double-counting
@@ -162,6 +161,10 @@ admin0_shape_file=climada_global.map_border_file; % only used if add_on_land=1
 coastal_buffer_km=50; % buffer [km] around coast to keep centroids/info near the coast
 % the filename where on_land flag is stored (since calculation very time consuming)
 hazard_plus.filename=[climada_global.results_dir filesep 'WISC_hazard_plus.mat'];
+%
+% SPECIAL small test area to run TESTS, usually next line commented out
+% (e.g. when checked into GitHub)
+FAST_TEST_AREA=[-10 5 50 60]; % lonmin, lonmax, latmin, latmax, around UK
 
 % template to prompt for filename if not given
 if isempty(wisc_file) % local GUI
@@ -368,6 +371,15 @@ if add_on_land % add a flag to identify centroids on land
     
 end % add_on_land
 
+if exist('FAST_TEST_AREA','var') % lonmin, lonmax, latmin, latmax
+    fprintf('TEST: restricting to small area around UK\n');
+    TEST_AREA_pos=(hazard.lon>FAST_TEST_AREA(1) & hazard.lon<FAST_TEST_AREA(2)) & (hazard.lat>FAST_TEST_AREA(3) & hazard.lat<FAST_TEST_AREA(4));
+    TEST_on_landcoast=hazard.on_landcoast(TEST_AREA_pos);
+    hazard.on_landcoast=hazard.on_landcoast*0;
+    hazard.on_landcoast(TEST_AREA_pos)=TEST_on_landcoast;
+    hazard.on_landcoast=logical(hazard.on_landcoast);
+end
+
 % allocate the hazard set
 hazard.intensity=spalloc(n_events*(n_prob_events+1),n_centroids,ceil(n_events*(n_prob_events+1)*n_centroids*matrix_density));
 
@@ -403,7 +415,7 @@ for file_i=1:n_files
             temp_data(temp_data<wind_threshold)=0;
             if n_prob_events>0
                 
-                temp_data(~hazard.on_landcoast)=0; % keep only values onland and coastal buffer
+                if isfield(hazard,'on_landcoast'),temp_data(~hazard.on_landcoast)=0;end % keep only values onland and coastal buffer
                 % check plot:
                 %figure('Name','WISC footprint','Color',[1 1 1]);
                 %[c,h] = contour(nc.lon,nc.lat,temp_data);clabel(c,h)

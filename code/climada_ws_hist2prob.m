@@ -75,8 +75,8 @@ else
     intensity_prob(1,:)=reshape(intensity2d,1,n_centroids);next_event=2;
 end
 
-intensity2d_sqrt=sqrt(intensity2d); % for speed-up
-intensity2d_pwrd=intensity2d.^1.1; % for speed-up
+intensity2d_sqrt = sqrt(intensity2d); % for speed-up
+intensity2d_pwrd =      intensity2d.^1.1; % for speed-up
 
 for loop_i=1:5
     
@@ -94,11 +94,11 @@ for loop_i=1:5
             %         intensity2d_modi=intensity2d_temp+0.0125*intensity2d_temp;
             %         intensity2d_modi=intensity2d_temp+0.1200*intensity2d_temp;
             %intensity2d_modi=intensity2d_temp+0.04*intensity2d_pwrd;
-            intensity2d_modi=intensity2d_temp+0.1*intensity2d_pwrd;
+            intensity2d_modi=intensity2d+0.1*intensity2d_pwrd;
         case 5
             %intensity2d_modi=intensity2d_temp-0.0330*intensity2d_temp;
             %intensity2d_modi=intensity2d_temp-0.05*intensity2d_pwrd;
-            intensity2d_modi=intensity2d_temp-0.1*intensity2d_pwrd;
+            intensity2d_modi=intensity2d-0.1*intensity2d_pwrd;
             %intensity2d_modi=intensity2d_temp-0.1200*intensity2d_temp;
     end % switch
     
