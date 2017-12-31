@@ -117,6 +117,7 @@ function [hazard,nc]=wisc_hazard_set(wisc_file,check_plot,hazard_filename,n_prob
 % David N. Bresch, david.bresch@gmail.com, 20171108, double file fp_era20c_1990012515_701_0 excluded
 % David N. Bresch, david.bresch@gmail.com, 20171229, option '{dir}__both' and fields hazard.area_km2 and hazard.on_land added
 % David N. Bresch, david.bresch@gmail.com, 20171230, hazard.on_landcoast and FAST_TEST_AREA added
+% David N. Bresch, david.bresch@gmail.com, 20171231, stored centroids restriced to on_landcoast ones
 %-
 
 hazard=[]; % init output
