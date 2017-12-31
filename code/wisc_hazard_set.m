@@ -358,7 +358,7 @@ if add_on_land % add a flag to identify centroids on land
         fprintf('%2.2i%% water points, thereof %2.2i%% coastal points\n',ceil(sum(water_points)/n_centroids*100),ceil(sum(coastal_points)/sum(water_points)*100));
         
         if exist('valid_area','var') % lonmin, lonmax, latmin, latmax
-            fprintf('> restricting to valid_area\n');
+            fprintf('> restricting to valid_area [%2.2f % 2.2f %2.2f %2.2f]\n',valid_area);
             valid_area_pos=(hazard.lon>valid_area(1) & hazard.lon<valid_area(2)) & (hazard.lat>valid_area(3) & hazard.lat<valid_area(4));
             valid_on_landcoast=hazard.on_landcoast(valid_area_pos);
             hazard.on_landcoast=hazard.on_landcoast*0;
@@ -387,7 +387,7 @@ if add_on_land % add a flag to identify centroids on land
 end % add_on_land
 
 if exist('FAST_TEST_AREA','var') % lonmin, lonmax, latmin, latmax
-    fprintf('TEST: restricting to small area around UK\n');
+    fprintf('TEST: restricting to area [%2.2f % 2.2f %2.2f %2.2f]\n',FAST_TEST_AREA);
     TEST_AREA_pos=(hazard.lon>FAST_TEST_AREA(1) & hazard.lon<FAST_TEST_AREA(2)) & (hazard.lat>FAST_TEST_AREA(3) & hazard.lat<FAST_TEST_AREA(4));
     TEST_on_landcoast=hazard.on_landcoast(TEST_AREA_pos);
     hazard.on_landcoast=hazard.on_landcoast*0;
