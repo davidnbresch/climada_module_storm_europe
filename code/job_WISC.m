@@ -38,9 +38,9 @@
 %
 % one should only have to edit this section
 cd /cluster/home/dbresch/climada % to make sure the cluster finds climada
-scratch_dir = '/cluster/scratch/dbresch/climada_data/hazards';
-%scratch_dir = '/Users/bresch/Documents/_GIT/climada_data/WISC/scratch'; % for local tests
-wisc_dir='/cluster/home/dbresch/climada_data/WISC/C3S_WISC_FOOTPRINT_NETCDF_0100';
+%scratch_dir = '/cluster/scratch/dbresch/climada_data/hazards';
+wisc_dir='/cluster/work/climate/dbresch/climada_data/results/WISC/C3S_WISC_FOOTPRINT_NETCDF_0100';
+hazards_dir='/cluster/work/climate/dbresch/climada_data/hazards';
 
 
 startup % climada_global exists afterwards
@@ -63,7 +63,7 @@ end % loop_i
 delete(pool)
 
 hazard=climada_hazard_merge(hazard_era20c,hazard_eraint,'events');
-hazard.filename = [scratch_dir filesep 'WISC_eur_WS' '.mat'];
+hazard.filename = [hazards_dir filesep 'WISC_eur_WS' '.mat'];
 fprintf('> saving combined hazard as %s\n',hazard.filename);
 save(hazard.filename,'hazard',climada_global.save_file_version);
 
