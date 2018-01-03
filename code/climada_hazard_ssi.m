@@ -10,6 +10,8 @@ function [ssi,ssi_sorted,xs_freq,ssi_orig,ssi_sorted_orig,xs_freq_orig]=climada_
 %   SSI = v [m/s] ^ 3 * duration [h] * area [km^2 or m^2], here with duration =1
 %   summed up over one event for all centroids over land where v >= windspeed_threshold_ms
 %
+%   SSI will be calculated both for all and historic events
+%
 %   previous call: generate a winter storm hazard event set, e.g. see wisc_hazard_set
 %   next call: muse about the output
 % CALLING SEQUENCE:
@@ -29,7 +31,7 @@ function [ssi,ssi_sorted,xs_freq,ssi_orig,ssi_sorted_orig,xs_freq_orig]=climada_
 % OUTPUTS:
 %   ssi(i): the ssi index for each event i
 %   ssi_sorted(j): same as ssi, sorted descendingly
-%   xs_freq(j): xs frequency for ssi_sorted(j). 
+%   xs_freq(j): xs frequency for ssi_sorted(j).
 %       Useful e.g. to plot(xs_freq,ssi_sorted);
 %   *_orig: same as above, but for original events only (historic ones)
 % MODIFICATION HISTORY:
@@ -73,7 +75,7 @@ if isfield(hazard,'on_land')
 else
     fprintf('WARNING: no field hazard.on_land, all centroids used\n');
 end
- 
+
 n_events=size(hazard.intensity,1);
 n_centroids=size(hazard.intensity,2);
 fprintf('> calculating storm severity index for %i events (at %i centroids): ',n_events,n_centroids);
@@ -113,12 +115,12 @@ ssi=ssi*1e-12; % arbitrary scaling
 [ssi_sorted,xs_freq]=climada_damage_exceedence(ssi,hazard.frequency,hazard.event_ID,1);
 
 if isfield(hazard,'orig_event_flag')
-        ssi_orig=ssi(logical(hazard.orig_event_flag));
-        frequency_orig=hazard.frequency(hazard.orig_event_flag)*hazard.event_count/hazard.orig_event_count;
-        [ssi_sorted_orig,xs_freq_orig]=climada_damage_exceedence(ssi_orig,frequency_orig,[],1);
+    ssi_orig=ssi(logical(hazard.orig_event_flag));
+    frequency_orig=hazard.frequency(hazard.orig_event_flag)*hazard.event_count/hazard.orig_event_count;
+    [ssi_sorted_orig,xs_freq_orig]=climada_damage_exceedence(ssi_orig,frequency_orig,[],1);
 end
 
-    
+
 if check_plot
     %return_period   = 1./xs_freq;
     %plot(return_period,ssi_sorted);xlabel('return period (years)');ylabel('SSI');set(gcf,'Color',[1 1 1])
@@ -129,32 +131,32 @@ if check_plot
         plot(xs_freq_orig,ssi_sorted_orig,'xr');
         legend({'all events','historic only'});
     end
-
-%     % produce gamma fit
-%     % -----------------
-% 
-%     p_alpha=0.0014; % alpha-parameter of Gamma-distribution (effect: mainly in SSI-direction)
-%     all_freq_sum=sum(hazard.frequency);
-%     p_gamma=hazard.event_count/(max(hazard.yyyy)-min(hazard.yyyy)+1);
-%     
-%     ssi_truncation=min(ssi)/2;
-%     max_axis_ssi=max(ssi)*1.5;
-%     fprintf('Gamma-fit parameters alpha=%f gamma=%f SSI truncation=%f\n',...
-%         p_alpha,p_gamma,ssi_truncation);
-%     ssi_axis_step=max_axis_ssi/100; % resolution of SSI axis
-%     ssi_axis=(ssi_truncation:ssi_axis_step:max_axis_ssi);
-%     
-%     gamma_fit=p_alpha^p_gamma/gamma(p_gamma)*(ssi_axis-ssi_truncation).^(p_gamma-1).*...
-%         exp(-p_alpha*(ssi_axis-ssi_truncation));
-%     gamma_fit=gamma_fit*ssi_axis_step; % not done all operations in one to stay close to EXCEL sheet 
-%     gamma_fit=cumsum(gamma_fit);
-%     gamma_fit=1-gamma_fit;
-%     gamma_fit=all_freq_sum*gamma_fit;
-%     
-%     % make the plot
-%     % -------------
-%     plot(gamma_fit,ssi_axis,'.k','MarkerSize',1); % overlay gamma fit
-%     legend({'SSI','Gamma fit'});
+    
+    %     % produce gamma fit
+    %     % -----------------
+    %
+    %     p_alpha=0.0014; % alpha-parameter of Gamma-distribution (effect: mainly in SSI-direction)
+    %     all_freq_sum=sum(hazard.frequency);
+    %     p_gamma=hazard.event_count/(max(hazard.yyyy)-min(hazard.yyyy)+1);
+    %
+    %     ssi_truncation=min(ssi)/2;
+    %     max_axis_ssi=max(ssi)*1.5;
+    %     fprintf('Gamma-fit parameters alpha=%f gamma=%f SSI truncation=%f\n',...
+    %         p_alpha,p_gamma,ssi_truncation);
+    %     ssi_axis_step=max_axis_ssi/100; % resolution of SSI axis
+    %     ssi_axis=(ssi_truncation:ssi_axis_step:max_axis_ssi);
+    %
+    %     gamma_fit=p_alpha^p_gamma/gamma(p_gamma)*(ssi_axis-ssi_truncation).^(p_gamma-1).*...
+    %         exp(-p_alpha*(ssi_axis-ssi_truncation));
+    %     gamma_fit=gamma_fit*ssi_axis_step; % not done all operations in one to stay close to EXCEL sheet
+    %     gamma_fit=cumsum(gamma_fit);
+    %     gamma_fit=1-gamma_fit;
+    %     gamma_fit=all_freq_sum*gamma_fit;
+    %
+    %     % make the plot
+    %     % -------------
+    %     plot(gamma_fit,ssi_axis,'.k','MarkerSize',1); % overlay gamma fit
+    %     legend({'SSI','Gamma fit'});
     
 end % check_plot
 

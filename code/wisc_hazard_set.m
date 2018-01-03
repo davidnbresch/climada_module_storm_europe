@@ -118,6 +118,7 @@ function [hazard,nc]=wisc_hazard_set(wisc_file,check_plot,hazard_filename,n_prob
 % David N. Bresch, david.bresch@gmail.com, 20171229, option '{dir}__both' and fields hazard.area_km2 and hazard.on_land added
 % David N. Bresch, david.bresch@gmail.com, 20171230, hazard.on_landcoast and FAST_TEST_AREA added
 % David N. Bresch, david.bresch@gmail.com, 20171231, stored centroids restriced to on_landcoast ones
+% David N. Bresch, david.bresch@gmail.com, 20180102, prompts where on_landcoast from
 %-
 
 hazard=[]; % init output
@@ -299,6 +300,7 @@ if add_on_land % add a flag to identify centroids on land
             hazard.on_land      = hazard_plus.on_land;
             hazard.on_landcoast = hazard_plus.on_landcoast;
             hazard.on_landcoast_comment=hazard_plus.on_landcoast_comment;
+            fprintf('< hazard.on_land and .on_landcoast added from %s\n',hazard_plus.filename);
         else
             fprintf('WARNING: hazard.on_land not added (mismatch with grid definition)\n');
             fprintf('>> delete %s first, re-run %s\n',hazard_plus.filename,mfilename);
