@@ -32,7 +32,7 @@
 %   to scratch disk, see PARAMETERS
 % MODIFICATION HISTORY:
 % David N. Bresch, dbresch@ethz.ch, 20171230, copy from job_isimip04
-% David N. Bresch, dbresch@ethz.ch, 20180101, run first, output to /cluster/work/... 
+% David N. Bresch, dbresch@ethz.ch, 20180101, run first, output to /cluster/work/...
 % David N. Bresch, dbresch@ethz.ch, 20180102, run again for WISC_eraint_eur_WS
 %-
 
@@ -50,27 +50,36 @@ pwd % just to check where the job is running from
 N_pool_workers=24; % for parpool
 climada_global.parfor=1; % for parpool
 
-% once more just to run 2nd part:
-climada_global.parfor=0;
-%hazard_eraint=wisc_hazard_set([wisc_dir filesep 'fp_eraint_*.nc'],0,'WISC_eraint_eur_WS',20);
 
-% pool=parpool(N_pool_workers);
-% 
+pool=parpool(N_pool_workers);
+%
 % for loop_i=1:2
-%     
+%
 %     if loop_i==1
 %         hazard_era20c=wisc_hazard_set([wisc_dir filesep 'fp_era20c_*.nc'],0,'WISC_era20c_eur_WS',20);
 %     else
 %         hazard_eraint=wisc_hazard_set([wisc_dir filesep 'fp_eraint_*.nc'],0,'WISC_eraint_eur_WS',20);
 %     end
-%     
+%
 % end % loop_i
-% delete(pool)
 
-load('/cluster/work/climate/dbresch/climada_data/hazards/WISC_eraint_eur_WS.mat'); % loads hazard
-hazard_eraint=hazard;clear hazard
-load('/cluster/work/climate/dbresch/climada_data/hazards/WISC_era20c_eur_WS.mat'); % loads hazard
+% load('/cluster/work/climate/dbresch/climada_data/hazards/WISC_eraint_eur_WS.mat'); % loads hazard
+% hazard_eraint=hazard;clear hazard
+% load('/cluster/work/climate/dbresch/climada_data/hazards/WISC_era20c_eur_WS.mat'); % loads hazard
+%
+% climada_hazard_merge(hazard,hazard_eraint,'events',[hazards_dir filesep 'WISC_eur_WS' '.mat']);
 
-climada_hazard_merge(hazard,hazard_eraint,'events',[hazards_dir filesep 'WISC_eur_WS' '.mat']);
+load('/cluster/work/climate/dbresch/climada_data/hazards/WISC_eur_WS.mat'); % loads hazard
+
+% calculate storm severity index
+[ssi.ssi,ssi.ssi_sorted,ssi.xs_freq,ssi.ssi_orig,ssi.ssi_sorted_orig,ssi.xs_freq_orig]=climada_hazard_ssi(hazard,0);
+ssi.filename='/cluster/work/climate/dbresch/climada_data/hazards/WISC_eur_WS_ssi.mat';
+fprintf('> storing ssi to %s\n',ssi.filename);
+save(ssi.filename,'ssi',climada_global.save_file_version)
+
+% calculate hazard return period maps
+climada_hazard_stats(hazard,[10 25 50 100 250 500 1000],-10,12,'WISC_eur_WS_stats'); % save stats to file
+
+delete(pool)
 
 exit % the cluster appreciates this, gives back memory etc.
