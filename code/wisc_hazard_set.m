@@ -23,17 +23,18 @@ function [hazard,nc]=wisc_hazard_set(wisc_file,check_plot,hazard_filename,n_prob
 %
 %   The code is pretty fast, except for determining the on_land points. Since
 %   this takes long (easiyl an hour, as inpolygon needs to deal with 1.5
-%   mio points), the result is saved in a special file in the results
-%   folder, named 'WISC_hazard_plus.mat'); Use climada_global.parfor=1 to
-%   at least sped up the addition of the coastal buffer.
+%   mio centroids to be matched to all 190+ countries), the result is saved
+%   in a special file in the results folder, named 'WISC_hazard_plus.mat');
+%   Use climada_global.parfor=1 to at least speed up the addition of the
+%   coastal buffer.   
 %
 %   NOTE: if climada_global.save_file_version is set to ='-v7' to allow hazard sets to
-%   be read in Octave, too, hazard.fraction is not saved, but re-processed
+%   be read in Octave, too. hazard.fraction is not saved, but re-processed
 %   each time the hazard is loaded (saves almost 25% of .mat file size).
 %
 %   previous call: none
 %   next call: climada_EDS_calc or e.g. climada_hazard_plot(hazard,0) or ssi=climada_hazard_ssi(hazard,1)
-%   see also: wisc_demo
+%   see also: wisc_demo and job_WISC to run this all on a cluster
 % CALLING SEQUENCE:
 %   [hazard,nc]=wisc_hazard_set(wisc_file,check_plot,hazard_filename,n_prob_events,add_on_land)
 % EXAMPLE:

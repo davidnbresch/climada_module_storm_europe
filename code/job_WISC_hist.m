@@ -1,8 +1,8 @@
-% batch job for cluster: bsub -R "rusage[mem=5000]" -n 24 matlab -nodisplay -singleCompThread -r job_WISC
+% batch job for cluster: bsub -R "rusage[mem=500]" -n 24 matlab -nodisplay -singleCompThread -r job_WISC_hist
 % MODULE:
 %   storm_europe
 % NAME:
-%   job_WISC
+%   job_WISC_hist
 % PURPOSE:
 %   run WISC probabilistic WS hazard set generation, in essence a caller
 %   for wisc_hazard_set on the cluster, then run some statistics, too.
@@ -10,20 +10,20 @@
 %   See PARAMETERS below before running
 %
 %   some hints to work with the cluster (explicit paths, edit this ;-)
-%   copy job to cluster:       scp -r Documents/_GIT/climada_modules/storm_europe/code/job_WISC.m dbresch@euler.ethz.ch:/cluster/home/dbresch/euler_jobs/.
+%   copy job to cluster:       scp -r Documents/_GIT/climada_modules/storm_europe/code/job_WISC_hist.m dbresch@euler.ethz.ch:/cluster/home/dbresch/euler_jobs/.
 %
 %   copy all data to cluster:  scp -r Documents/_GIT/climada_data/WISC/C3S_WISC_FOOTPRINT_NETCDF_0100 dbresch@euler.ethz.ch:/cluster/work/climate/dbresch/climada_data/WISC/.
 %   copy all data to cluster:  scp -r Documents/_GIT/climada_data/hazards/WISC_eur_WS_hist.mat dbresch@euler.ethz.ch:/cluster/work/climate/dbresch/climada_data/hazards/.
 %   copy all data to cluster:  scp -r Documents/_GIT/climada_data/results/WISC_hazard_plus.mat dbresch@euler.ethz.ch:/cluster/work/climate/dbresch/climada_data/results/.
-%   run on cluster:            bsub -R "rusage[mem=5000]" -n 24 matlab -nodisplay -singleCompThread -r job_WISC
+%   run on cluster:            bsub -R "rusage[mem=500]" -n 24 matlab -nodisplay -singleCompThread -r job_WISC_hist
 %
 %   copy results back local:   scp -r dbresch@euler.ethz.ch:/cluster/work/climate/dbresch/climada_data/hazards/WISC_eur_WS*.mat Documents/_GIT/climada_data/hazards/.
 %   copy results back polybox: scp -r dbresch@euler.ethz.ch:/cluster/work/climate/dbresch/climada_data/hazards/WISC_eur_WS*.mat /Users/bresch/polybox/WISC/hazards/.
 %
 % CALLING SEQUENCE:
-%   bsub -R "rusage[mem=5000]" -n 24 matlab -nodisplay -singleCompThread -r job_WISC
+%   bsub -R "rusage[mem=500]" -n 24 matlab -nodisplay -singleCompThread -r job_WISC_hist
 % EXAMPLE:
-%   bsub -R "rusage[mem=5000]" -n 24 matlab -nodisplay -singleCompThread -r job_WISC
+%   bsub -R "rusage[mem=500]" -n 24 matlab -nodisplay -singleCompThread -r job_WISC_hist
 % INPUTS:
 % OPTIONAL INPUT PARAMETERS:
 % OUTPUTS:
@@ -64,9 +64,9 @@ pool=parpool(N_pool_workers);
 % parfor loop_i=1:2 % a bit a joke, but at least parallel
 %
 %     if loop_i==1
-%         hazard_era20c=wisc_hazard_set([wisc_dir filesep 'fp_era20c_*.nc'],0,'WISC_era20c_eur_WS',20);
+%         hazard_era20c=wisc_hazard_set([wisc_dir filesep 'fp_era20c_*.nc'],0,'WISC_era20c_eur_WS_hist');
 %     else
-%         hazard_eraint=wisc_hazard_set([wisc_dir filesep 'fp_eraint_*.nc'],0,'WISC_eraint_eur_WS',20);
+%         hazard_eraint=wisc_hazard_set([wisc_dir filesep 'fp_eraint_*.nc'],0,'WISC_eraint_eur_WS_hist');
 %     end
 %
 % end % loop_i
@@ -74,21 +74,21 @@ pool=parpool(N_pool_workers);
 % merge the two hazard sets
 % -------------------------
 
-% load([hazards_dir filesep 'WISC_eraint_eur_WS.mat']); % load first hazard
+% load([hazards_dir filesep 'WISC_eraint_eur_WS_hist.mat']); % load first hazard
 % hazard_eraint=hazard;clear hazard
-% load([hazards_dir filesep 'WISC_era20c_eur_WS.mat']); % load second hazard
+% load([hazards_dir filesep 'WISC_era20c_eur_WS_hist.mat']); % load second hazard
 %
-% climada_hazard_merge(hazard,hazard_eraint,'events',[hazards_dir filesep 'WISC_eur_WS' '.mat']);
+% climada_hazard_merge(hazard,hazard_eraint,'events',[hazards_dir filesep 'WISC_eur_WS_hist' '.mat']);
 
 % calculate statistics
 % --------------------
 
 clear hazard % free up memory
 global hazard % define as global to allow for functions to work on without passing on the whole data
-load([climada_global.hazards_dir filesep 'WISC_eur_WS.mat']); % load hazard
+load([climada_global.hazards_dir filesep 'WISC_eur_WS_hist.mat']); % load hazard
 
 % calculate storm severity index (SSI)
-ssi_filename=[climada_global.hazards_dir filesep 'WISC_eur_WS_ssi.mat'];
+ssi_filename=[climada_global.hazards_dir filesep 'WISC_eur_WS_hist_ssi.mat'];
 tic
 [ssi.ssi,ssi.ssi_sorted,ssi.xs_freq,ssi.ssi_orig,ssi.ssi_sorted_orig,ssi.xs_freq_orig]=climada_hazard_ssi('global',0);
 toc
@@ -96,7 +96,7 @@ fprintf('> storing ssi to %s\n',ssi_filename);
 save(ssi_filename,'ssi',climada_global.save_file_version)
 
 % calculate hazard return period maps
-stats_filename=[climada_global.hazards_dir filesep 'WISC_eur_WS_stats.mat'];
+stats_filename=[climada_global.hazards_dir filesep 'WISC_eur_WS_hist_stats.mat'];
 tic
 climada_hazard_stats('global',[10 25 50 100 250 500 1000],-10); % operate on global variable hazard
 toc
