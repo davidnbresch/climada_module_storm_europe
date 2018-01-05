@@ -12,6 +12,8 @@ function [ssi,ssi_sorted,xs_freq,ssi_orig,ssi_sorted_orig,xs_freq_orig]=climada_
 %
 %   SSI will be calculated both for all and historic events
 %
+%   NOTE: this code listens to climada_global.parfor for substantial speedup
+%
 %   previous call: generate a winter storm hazard event set, e.g. see wisc_hazard_set
 %   next call: muse about the output
 % CALLING SEQUENCE:
@@ -19,11 +21,20 @@ function [ssi,ssi_sorted,xs_freq,ssi_orig,ssi_sorted_orig,xs_freq_orig]=climada_
 % EXAMPLE:
 %   hazard=wisc_hazard_set('test'); % create a windstorm hazard
 %   ssi=climada_hazard_ssi(hazard,1);
+%
+%   global hazard % define hazard as global variable
+%   load('WISC_eur_WS'); % better use load than climada_hazard_load
+%   climada_hazard_ssi('global',1); % operate on global variable hazard
 % INPUTS:
 %   hazard: a climada hazard set, especially useful for winter storm. Should
 %       contain the field hazard.area_km2, the area per centroid (otherwise, a
 %       uniform area of 1 is presumed). Should also contab the field
 %       hazard.on_land, as otherwise all centroids are used.
+%       ='global': define hazard as a global variable before calling, in
+%       which case its workspace is shared and prevents from passing on a
+%       huge variable, in which case MATLAB makes a copy (and hence starts
+%       swapping for huge hazard sets...). In this case, do NOT specify any
+%       ouput (as otherwise, there might be troubles in return).
 %       > promted for if not given
 % OPTIONAL INPUT PARAMETERS:
 %   check_plot: if =1, plot the SSI distribution, default =0 (no plot)
@@ -37,11 +48,12 @@ function [ssi,ssi_sorted,xs_freq,ssi_orig,ssi_sorted_orig,xs_freq_orig]=climada_
 % MODIFICATION HISTORY:
 % David N. Bresch, david.bresch@gmail.com, 20171229, initial
 % David N. Bresch, david.bresch@gmail.com, 20171230, ssi_orig added
+% David N. Bresch, david.bresch@gmail.com, 20180105, hazard='global' added, parfor
 %-
 
 ssi=[];ssi_sorted=[];xs_freq=[];ssi_orig=[];ssi_sorted_orig=[];xs_freq_orig=[]; % init output
 
-%global climada_global
+global climada_global
 if ~climada_init_vars,return;end % init/import global variables
 
 %%if climada_global.verbose_mode,fprintf('*** %s ***\n',mfilename);end % show routine name on stdout
@@ -61,7 +73,16 @@ if ~exist('windspeed_threshold_ms','var'),windspeed_threshold_ms=22;end
 % define all parameters here - no parameters to be defined in code below
 %
 
-hazard = climada_hazard_load(hazard); % prompt for hazard_set if not given
+
+if strcmpi(hazard,'global')
+    % see PROGRAMMERS APOLOGY in header
+    clear hazard
+    fprintf('working on global hazard\n')
+    global hazard % the parser does not like this, we know ;-)
+else
+    hazard=climada_hazard_load(hazard);
+end
+
 if isempty(hazard),return;end
 hazard = climada_hazard2octave(hazard); % Octave compatibility for -v7.3 mat-files
 
@@ -78,32 +99,53 @@ end
 
 n_events=size(hazard.intensity,1);
 n_centroids=size(hazard.intensity,2);
-fprintf('> calculating storm severity index for %i events (at %i centroids): ',n_events,n_centroids);
-
-climada_progress2stdout    % init, see terminate below
-t0 = clock;
 
 ssi=zeros(1,n_events); % init
-for event_i=1:n_events
-    [~,cols,intensity] = find(hazard.intensity(event_i,:));
-    intensity(intensity<windspeed_threshold_ms)=0;
-    ssi(event_i) = intensity.^3 * hazard.area_km2(cols)'*1e6; % v^3*m^2=(m/s)^3*m^2=m^5/s^5
-    climada_progress2stdout(event_i,n_events,10,'events'); % update
-end % event_i
 
-% % slower
-% for event_i=1:n_events
-%     [~,cols] = find(hazard.intensity(event_i,:)>=windspeed_threshold_ms);
-%     ssi(event_i) = hazard.intensity(event_i,cols).^3 * hazard.area_km2(cols)'*1e6; % v^3*m^2=(m/s)^3*m^2=m^5/s^5
-%     climada_progress2stdout(event_i,n_events,10,'events'); % update
-% end % event_i
+t0 = clock;
 
-% % slower
-% hazard.intensity(hazard.intensity<windspeed_threshold_ms)=0;
-% hazard.intensity=hazard.intensity.^3; % cube
-% ssi=hazard.area_km2*hazard.intensity'*1e6; % v^3*m^2=(m/s)^3*m^2=m^5/s^5
+if climada_global.parfor
+    
+    fprintf('> calculating storm severity index for %i events (at %i centroids, parfor) ',n_events,n_centroids);
 
-climada_progress2stdout(0) % terminate
+    intensity=hazard.intensity; % as parfor does not like structs
+    frequency=hazard.frequency;
+    hazard_area_km2=hazard.area_km2;
+
+    parfor event_i=1:n_events
+        [~,cols,intensity_tmp] = find(intensity(event_i,:));
+        % next line does not work, as it returns a logical array, not the values in intensity_tmp
+        %[~,cols,intensity_tmp]=find(intensity(event_i,:)>=windspeed_threshold_ms); % is wrong
+        intensity_tmp(intensity_tmp<windspeed_threshold_ms)=0;
+        ssi(event_i) = intensity_tmp.^3 * hazard_area_km2(cols)'*1e6; % v^3*m^2=(m/s)^3*m^2=m^5/s^5
+    end % event_i
+else
+    
+    fprintf('> calculating storm severity index for %i events (at %i centroids): ',n_events,n_centroids);
+
+    climada_progress2stdout    % init, see terminate below
+    
+    for event_i=1:n_events
+        [~,cols,intensity] = find(hazard.intensity(event_i,:));
+        intensity(intensity<windspeed_threshold_ms)=0;
+        ssi(event_i) = intensity.^3 * hazard.area_km2(cols)'*1e6; % v^3*m^2=(m/s)^3*m^2=m^5/s^5
+        climada_progress2stdout(event_i,n_events,10,'events'); % update
+    end % event_i
+    
+    % % slower
+    % for event_i=1:n_events
+    %     [~,cols] = find(hazard.intensity(event_i,:)>=windspeed_threshold_ms);
+    %     ssi(event_i) = hazard.intensity(event_i,cols).^3 * hazard.area_km2(cols)'*1e6; % v^3*m^2=(m/s)^3*m^2=m^5/s^5
+    %     climada_progress2stdout(event_i,n_events,10,'events'); % update
+    % end % event_i
+    
+    % % slower
+    % hazard.intensity(hazard.intensity<windspeed_threshold_ms)=0;
+    % hazard.intensity=hazard.intensity.^3; % cube
+    % ssi=hazard.area_km2*hazard.intensity'*1e6; % v^3*m^2=(m/s)^3*m^2=m^5/s^5
+    
+    climada_progress2stdout(0) % terminate
+end
 
 t_elapsed = etime(clock,t0);
 fprintf('done, took %3.2f sec. \n',t_elapsed);
@@ -115,7 +157,8 @@ ssi=ssi*1e-12; % arbitrary scaling
 [ssi_sorted,xs_freq]=climada_damage_exceedence(ssi,hazard.frequency,hazard.event_ID,1);
 
 if isfield(hazard,'orig_event_flag')
-    ssi_orig=ssi(logical(hazard.orig_event_flag));
+    hazard.orig_event_flag=logical(hazard.orig_event_flag); % to be sure
+    ssi_orig=ssi(hazard.orig_event_flag);
     frequency_orig=hazard.frequency(hazard.orig_event_flag)*hazard.event_count/hazard.orig_event_count;
     [ssi_sorted_orig,xs_freq_orig]=climada_damage_exceedence(ssi_orig,frequency_orig,[],1);
 end
