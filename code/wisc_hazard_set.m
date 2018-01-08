@@ -165,7 +165,7 @@ coastal_buffer_km=50; % buffer [km] around coast to keep centroids/info near the
 % we restrict further, as part of the full area is of no interest
 valid_area=[-10 30 35 70]; % lonmin, lonmax, latmin, latmax, around UK
 % the filename where on_land flag is stored (since calculation very time consuming)
-hazard_plus.filename=[climada_global.results_dir filesep 'WISC_hazard_plus.mat'];
+hazard_plus.filename=[climada_global.data_dir filesep 'WISC' filesep 'WISC_hazard_plus.mat'];
 %
 % SPECIAL small test area to run TESTS, usually next line commented out
 % (e.g. when checked into GitHub)
@@ -382,6 +382,8 @@ if add_on_land % add a flag to identify centroids on land
         % check with: plot(hazard_plus.lon(hazard_plus.on_land),     hazard_plus.lat(hazard_plus.on_land),'.r','MarkerSize',0.0001)
         
         fprintf('> saving area and on_land as as %s\n',hazard_plus.filename);
+        WISC_data_folder=fileparts(hazard_plus.filename);
+        if ~isdir(WISC_data_folder),[fP,fN]=fileparts(WISC_data_folder);mkdir(fP,fN);end % create it
         save(hazard_plus.filename,'hazard_plus',climada_global.save_file_version);
         clear hazard_plus
         
