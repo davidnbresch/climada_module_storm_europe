@@ -49,6 +49,7 @@ function [ssi,ssi_sorted,xs_freq,ssi_orig,ssi_sorted_orig,xs_freq_orig]=climada_
 % David N. Bresch, david.bresch@gmail.com, 20171229, initial
 % David N. Bresch, david.bresch@gmail.com, 20171230, ssi_orig added
 % David N. Bresch, david.bresch@gmail.com, 20180105, hazard='global' added, parfor
+% David N. Bresch, david.bresch@gmail.com, 20180109, no change to hazard in order to allow passing as reference
 %-
 
 ssi=[];ssi_sorted=[];xs_freq=[];ssi_orig=[];ssi_sorted_orig=[];xs_freq_orig=[]; % init output
@@ -88,11 +89,13 @@ hazard = climada_hazard2octave(hazard); % Octave compatibility for -v7.3 mat-fil
 
 if ~isfield(hazard,'area_km2')
     fprintf('WARNING: no field hazard.area_km2, unit area presumed\n');
-    hazard.area_km2=hazard.lon*0+1; % unit area presumed
+    hazard_area_km2=hazard.lon*0+1; % unit area presumed
+else
+    hazard_area_km2=hazard.area_km2; % make direct (speedup)
 end
 
 if isfield(hazard,'on_land')
-    hazard.area_km2=hazard.area_km2.*hazard.on_land; % deal with land points only
+    hazard_area_km2=hazard_area_km2.*hazard.on_land; % deal with land points only
 else
     fprintf('WARNING: no field hazard.on_land, all centroids used\n');
 end
@@ -110,7 +113,6 @@ if climada_global.parfor
 
     intensity=hazard.intensity; % as parfor does not like structs
     frequency=hazard.frequency;
-    hazard_area_km2=hazard.area_km2;
 
     parfor event_i=1:n_events
         [~,cols,intensity_tmp] = find(intensity(event_i,:));
@@ -128,21 +130,21 @@ else
     for event_i=1:n_events
         [~,cols,intensity] = find(hazard.intensity(event_i,:));
         intensity(intensity<windspeed_threshold_ms)=0;
-        ssi(event_i) = intensity.^3 * hazard.area_km2(cols)'*1e6; % v^3*m^2=(m/s)^3*m^2=m^5/s^5
+        ssi(event_i) = intensity.^3 * hazard_area_km2(cols)'*1e6; % v^3*m^2=(m/s)^3*m^2=m^5/s^5
         climada_progress2stdout(event_i,n_events,10,'events'); % update
     end % event_i
     
     % % slower
     % for event_i=1:n_events
     %     [~,cols] = find(hazard.intensity(event_i,:)>=windspeed_threshold_ms);
-    %     ssi(event_i) = hazard.intensity(event_i,cols).^3 * hazard.area_km2(cols)'*1e6; % v^3*m^2=(m/s)^3*m^2=m^5/s^5
+    %     ssi(event_i) = hazard.intensity(event_i,cols).^3 * hazard_area_km2(cols)'*1e6; % v^3*m^2=(m/s)^3*m^2=m^5/s^5
     %     climada_progress2stdout(event_i,n_events,10,'events'); % update
     % end % event_i
     
     % % slower
     % hazard.intensity(hazard.intensity<windspeed_threshold_ms)=0;
     % hazard.intensity=hazard.intensity.^3; % cube
-    % ssi=hazard.area_km2*hazard.intensity'*1e6; % v^3*m^2=(m/s)^3*m^2=m^5/s^5
+    % ssi=hazard_area_km2*hazard.intensity'*1e6; % v^3*m^2=(m/s)^3*m^2=m^5/s^5
     
     climada_progress2stdout(0) % terminate
 end
@@ -157,9 +159,9 @@ ssi=ssi*1e-12; % arbitrary scaling
 [ssi_sorted,xs_freq]=climada_damage_exceedence(ssi,hazard.frequency,hazard.event_ID,1);
 
 if isfield(hazard,'orig_event_flag')
-    hazard.orig_event_flag=logical(hazard.orig_event_flag); % to be sure
-    ssi_orig=ssi(hazard.orig_event_flag);
-    frequency_orig=hazard.frequency(hazard.orig_event_flag)*hazard.event_count/hazard.orig_event_count;
+    hazard_orig_event_flag=logical(hazard.orig_event_flag); % to be sure
+    ssi_orig=ssi(hazard_orig_event_flag);
+    frequency_orig=hazard.frequency(hazard_orig_event_flag)*hazard.event_count/hazard.orig_event_count;
     [ssi_sorted_orig,xs_freq_orig]=climada_damage_exceedence(ssi_orig,frequency_orig,[],1);
 end
 
