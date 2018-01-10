@@ -22,7 +22,7 @@ function hazard_info=wisc_hazard_set_prob(hazard,check_plot,add_fraction,country
 %   each time the hazard is loaded (saves almost 25% of .mat file size).
 %
 %   previous call: wisc_hazard_set (automaticall invoked, if not run before)
-%   next call: climada_hazard_plot orclimada_hazard_ssi
+%   next call: climada_hazard_plot, climada_hazard_ssi, wisc_stats
 % CALLING SEQUENCE:
 %   hazard_info=wisc_hazard_set_prob(hazard,check_plot,add_fraction)
 % EXAMPLE:
@@ -40,8 +40,9 @@ function hazard_info=wisc_hazard_set_prob(hazard,check_plot,add_fraction,country
 % OPTIONAL INPUT PARAMETERS:
 %   check_plot: if =1, show check plot(s), =0 not (default, except for TEST
 %       mode)
-%   add_fraction: if =1, add hazard.fraction. Default =0, since time consuming
-%       and not required for WS.
+%   add_fraction: if =1 (default), add hazard.fraction. Set =0 if memory
+%       troubles and time issus (fractionnot really required for WS, but
+%       you would have to make a local copy of climada_EDS_calc...)
 %   country_ISO3: the countries we will generate a probabilistic hazard set
 %       for, either single country char ='DNK' or a st ={'DNK','NLD'}.
 %       If empty, the setting for country.ISO3 in PARAMETERS is used.
@@ -98,7 +99,7 @@ if ~climada_init_vars,return;end % init/import global variables
 % and to set default value where  appropriate
 if ~exist('hazard','var'),          hazard       = [];end
 if ~exist('check_plot','var'),      check_plot   =  0;end
-if ~exist('add_fraction','var'),    add_fraction =  0;end
+if ~exist('add_fraction','var'),    add_fraction =  1;end
 if ~exist('country_ISO3','var'),    country_ISO3 = '';end
 
 % locate the module's (or this code's) data folder (usually  a folder
@@ -107,15 +108,15 @@ if ~exist('country_ISO3','var'),    country_ISO3 = '';end
 
 % PARAMETERS
 %
-n_prob_events=20; % number of probabilistic 'daughter' events per event
+n_prob_events=29; % number of probabilistic 'daughter' events per event
 %
 % define the countries we will generate a probabilistic hazard set for (at least one)
 % country names as ISO3 code, if possible to be alphabetically ordered (ABW..ZWE)
-%country.ISO3={'GBR','IRL','DEU','FRA','DNK','NLD','BEL','CHE','AUT','ESP'}; % name like 'United Kingdom' or ISO3 code like 'GBR'
-country.ISO3={'GBR'}; % name like 'United Kingdom' or ISO3 code like 'GBR'
+country.ISO3={'AUT','BEL','CHE','DEU','DNK','ESP','FRA','GBR','IRL','LUX','NLD','NOR','POL','PRT','SWE'};
+%country.ISO3={'DEU','FRA','GBR'}; % name like 'United Kingdom' or ISO3 code like 'GBR'
 %
 % set threshold [m/s] below which we do not store the windfield (for memory reasons)
-wind_threshold=15; % default 15 m/s (not too high, to allow to raise a few m/s later in the process if needed, e.g. climate scenarios)
+wind_threshold=18; % default 18 m/s (not too high, to allow to raise a few m/s later in the process if needed, e.g. climate scenarios)
 matrix_density=.4; % the average density of the hazard (=#nozero/#all)
 %
 % whether we create a yearset
@@ -176,7 +177,7 @@ if exist(hazard_info.filename,'file') % check for consistency with hazard_info f
     if sum(abs(hazard_info.lon-hazard.lon))+sum(abs(hazard_info.lat-hazard.lat))<1000*eps % check for same grid
         % grid ok, now check for requested countries being available in hazard_info
         shape_is=zeros(1,n_countries);
-        for shape_i=1:length(admin0_shapes) % conert ISO3 to shape index, as faster
+        for shape_i=1:length(admin0_shapes) % convert ISO3 to shape index, as faster
             country_contains=contains(country.ISO3,admin0_shapes(shape_i).ADM0_A3);
             if sum(contains(country.ISO3,admin0_shapes(shape_i).ADM0_A3)) % country within set of requestedones
                 shape_is(country_contains) = shape_i;
@@ -241,8 +242,13 @@ clear admin0_shapes
 
 % figure idex of centroids for each country (for speedup)
 if isfield(country,'pos'),country=rmfield(country,'pos');end
-for country_i=1:length(hazard_info.shape.ISO3)
-    country.pos{country_i}.pos=find(hazard_info.shape_i==hazard_info.shape.shape_i(country_i)); % returns index values, saves space
+for country_i=1:n_countries
+    iii=[];
+    for si=1:length(hazard_info.shape.shape_i)
+        % find country.ISO3 in hazard_info.shape.ISO3
+        if strcmpi(hazard_info.shape.ISO3{si},country.ISO3{country_i}),iii=si;end
+    end %si
+    country.pos{country_i}.pos=find(hazard_info.shape_i==hazard_info.shape.shape_i(iii)); % returns index values, saves space
     % e.g.: hazard.shape_i(country.pos{country_i}.pos)) % all centroids within country i
 end % country_i
 
@@ -286,9 +292,7 @@ fprintf('> converting %i events for %i countries: ',n_events,n_countries);
 climada_progress2stdout(-1,[],2) % init with mod_step 2 insted of 10
 
 t0 = clock;
-%for event_i=1:n_events
-for event_i=50:60
-    %for event_i=55:56 % for fast TEST, use event_i=55:56 for DNK
+for event_i=1:n_events % for fast TEST, use event_i=55:56 for DNK
     
     intensity_hist1D=hazard_intensity(event_i,:); % make full
     intensity2D=reshape(full(intensity_hist1D),hazard_lonlat_size); % covert to 2D
@@ -305,8 +309,8 @@ for event_i=50:60
     
     climada_progress2stdout(event_i,n_events_prob,10,'events'); % update
 end % event_i
-climada_progress2stdout(0) % terminate
 t_elapsed_footprints = etime(clock,t0);
+climada_progress2stdout(0) % terminate
 fprintf('done, took %3.2f sec. \n',t_elapsed_footprints);
 
 clear hazard_intensity % free up memory
@@ -353,7 +357,7 @@ if create_yearset
             hazard_info.orig_yearset(year_i).yyyy=active_year;
             hazard_info.orig_yearset(year_i).event_count=event_count;
             hazard_info.orig_yearset(year_i).event_index=event_index;
-            year_i=year_i+1;
+            year_i=year_i+1;event_index=[];event_count=0; % re-init
             % reset for next year
             active_year=hazard_info.yyyy(event_i);
             if hazard_info.orig_event_flag(event_i)
@@ -380,6 +384,7 @@ end % create_yearset
 for country_i=n_countries:-1:1 % backard to have last country last in memory
     hazard              = hazard_info; % copy, then restrict:
     hazard              = rmfield(hazard,'shape_i');
+    hazard              = rmfield(hazard,'shape');
     hazard.lon          = hazard.lon(country.pos{country_i}.pos);
     hazard.lat          = hazard.lat(country.pos{country_i}.pos);
     hazard.area_km2     = hazard.area_km2(country.pos{country_i}.pos);

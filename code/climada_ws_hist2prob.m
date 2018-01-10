@@ -78,7 +78,7 @@ end
 intensity2d_sqrt = sqrt(intensity2d); % for speed-up
 intensity2d_pwrd =      intensity2d.^1.1; % for speed-up
 
-for loop_i=1:5
+for loop_i=1:6
     
     switch loop_i
         case 1
@@ -100,7 +100,13 @@ for loop_i=1:5
             %intensity2d_modi=intensity2d_temp-0.05*intensity2d_pwrd;
             intensity2d_modi=intensity2d-0.1*intensity2d_pwrd;
             %intensity2d_modi=intensity2d_temp-0.1200*intensity2d_temp;
+        case 6
+            intensity2d_modi=intensity2d-0.05*intensity2d_pwrd-0.05*intensity2d_sqrt;
     end % switch
+    
+    if loop_i>1 % except for the first loop, which moves the historic event
+        intensity_prob(next_event,:)=reshape(intensity2d_modi,1,n_centroids);next_event=next_event+1; % center
+    end
     
     % shift North/South and East/West delta_ij gridpoints
     intensity2d_temp=intensity2d0; % init
