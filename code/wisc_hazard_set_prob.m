@@ -22,7 +22,7 @@ function hazard_info=wisc_hazard_set_prob(hazard,check_plot,add_fraction,country
 %   each time the hazard is loaded (saves almost 25% of .mat file size).
 %
 %   previous call: wisc_hazard_set (automaticall invoked, if not run before)
-%   next call: climada_hazard_plot, climada_hazard_ssi, wisc_stats
+%   next call: wisc_hazard_stats, climada_hazard_plot
 % CALLING SEQUENCE:
 %   hazard_info=wisc_hazard_set_prob(hazard,check_plot,add_fraction)
 % EXAMPLE:
@@ -73,9 +73,10 @@ function hazard_info=wisc_hazard_set_prob(hazard,check_plot,add_fraction,country
 %       SPECIAL: hazard.lonlat_size allows to convert back to 2D grid, i.e
 %        lon2D=reshape(hazard.lon,hazard.lonlat_size)
 %        lat2D=reshape(hazard.lat,hazard.lonlat_size)
-%        wind=reshape(hazard.intensity(1,c),hazard.lonlat_size)
-%   writes a special file 'WISC_hazard_info.mat' with the core information fields of hazard_info (not intensity) to a
-%       WISC subfolder of the climada data folder, a struct with fields:
+%        footprint=reshape(hazard.intensity(1,:),hazard.lonlat_size)
+%   writes a special file 'WISC_hazard_info.mat' with the core information
+%       fields of hazard_info (not intensity) to a WISC subfolder of the
+%       climada data folder, a struct with fields:  
 %       lon(i) and lat(i) for centroid i as in hazard
 %       lonlat_size: the original size of the 2D single footprint array
 %       area_km2(i): the area for centroid i in km2
@@ -108,7 +109,9 @@ if ~exist('country_ISO3','var'),    country_ISO3 = '';end
 
 % PARAMETERS
 %
-n_prob_events=29; % number of probabilistic 'daughter' events per event
+% the number of probabilistic 'daughter' events per event, please check
+% with climada_ws_hist2prob for consistency (used here to pre-allocate memory)
+n_prob_events=29; % default =29, see climada_ws_hist2prob
 %
 % define the countries we will generate a probabilistic hazard set for (at least one)
 % country names as ISO3 code, if possible to be alphabetically ordered (ABW..ZWE)
