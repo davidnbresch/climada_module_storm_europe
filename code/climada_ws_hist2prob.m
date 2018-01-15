@@ -1,4 +1,4 @@
-function [intensity_prob,n_prob_events]=climada_ws_hist2prob(intensity2d,lonlat_size)
+function [intensity_prob,n_prob_events]=climada_ws_hist2prob(intensity2d,lonlat_size,n_prob_events,delta_ij)
 % climada historic probabilistic
 % MODULE:
 %   storm_europe
@@ -27,13 +27,18 @@ function [intensity_prob,n_prob_events]=climada_ws_hist2prob(intensity2d,lonlat_
 % OPTIONAL INPUT PARAMETERS:
 %   lonlat_size: the size of intensity2d, only required if intensity2d is
 %       passed on as 1d array.
+%   n_prob_events: the number of probabilistic events, currenty hard-wired
+%       to 20
+%   delta_ij: the shift in array indices North/South and East/West by
+%       delta_ij gridpoints (use e.g. 100 for checks to show large effect) 
 % OUTPUTS:
-%   intensity_prob(n_prob_events+1,n_centroids): the probabilistic
-%       intensity, first event is the original footprint, NOT sparse
+%   intensity_prob(n_prob_events,n_centroids): the probabilistic
+%       intensity, NOT sparse
 %   n_prob_events: the number of probabilistic events added
 % MODIFICATION HISTORY:
 % David N. Bresch, david.bresch@gmail.com, 20171229, initial
 % David N. Bresch, david.bresch@gmail.com, 20171230, NOT sparse returned
+% David N. Bresch, david.bresch@gmail.com, 20180109, first event returned is first prob, not hist any more, n_prob_events and delta_ij passed
 %-
 
 intensity_prob=[];
@@ -44,41 +49,36 @@ if ~climada_init_vars,return;end % init/import global variables
 % poor man's version to check arguments
 % and to set default value where  appropriate
 if ~exist('intensity2d','var'),return;end
-if ~exist('lonlat_size','var'),lonlat_size=[];end
+if ~exist('lonlat_size','var'),  lonlat_size=[];end
+if ~exist('n_prob_events','var'),n_prob_events=20;end
+if ~exist('delta_ij','var'),     delta_ij=4;end
 
 % PARAMETERS
 %
 % define all parameters here - no parameters to be defined in code below
-%
-n_prob_events=20;
-dii=4; % shift North/South and East/West by dii gridpoints (use e.g. 100 for checks)
+
 
 if isempty(lonlat_size),lonlat_size=size(intensity2d);end
 n_centroids=prod(lonlat_size);
 intensity2d0=zeros(lonlat_size); % init empty array
 % faster (facor two) to first deal with double arrays, then sparsify
 %intensity_prob=spalloc(1+n_prob_events,n_centroids,(1+n_prob_events)*n_centroids*nnz(intensity2d)/numel(intensity2d));
-intensity_prob=zeros(1+n_prob_events,n_centroids);
+intensity_prob=zeros(n_prob_events,n_centroids);
+next_event=1;
 
 if size(intensity2d,1)==1
-    intensity_prob(1,:)=intensity2d;next_event=2;
     if ~isempty(lonlat_size)
-        % convert back to 2d-array
-        %lon2d=reshape(hazard.lon,hazard.lonlat_size);
-        %lat2d=reshape(hazard.lat,hazard.lonlat_size);
-        intensity2d=reshape(intensity2d(1,:),lonlat_size); % check with: contour(lon2d,lat2d,intensity2d)
+        intensity2d=reshape(intensity2d(1,:),lonlat_size); % convert back to 2d-array
     else
         fprintf('ERROR: either provide 2d intensity or lonlat_size in addition\n');
         return
     end
-else
-    intensity_prob(1,:)=reshape(intensity2d,1,n_centroids);next_event=2;
 end
 
 intensity2d_sqrt = sqrt(intensity2d); % for speed-up
 intensity2d_pwrd =      intensity2d.^1.1; % for speed-up
 
-for loop_i=1:5
+for loop_i=1:6
     
     switch loop_i
         case 1
@@ -100,21 +100,27 @@ for loop_i=1:5
             %intensity2d_modi=intensity2d_temp-0.05*intensity2d_pwrd;
             intensity2d_modi=intensity2d-0.1*intensity2d_pwrd;
             %intensity2d_modi=intensity2d_temp-0.1200*intensity2d_temp;
+        case 6
+            intensity2d_modi=intensity2d-0.05*intensity2d_pwrd-0.05*intensity2d_sqrt;
     end % switch
     
-    % shift North/South and East/West dii gridpoints
+    if loop_i>1 % except for the first loop, which moves the historic event
+        intensity_prob(next_event,:)=reshape(intensity2d_modi,1,n_centroids);next_event=next_event+1; % center
+    end
+    
+    % shift North/South and East/West delta_ij gridpoints
     intensity2d_temp=intensity2d0; % init
-    intensity2d_temp(:,1:end-dii)=intensity2d_modi(:,1+dii:end); % South
+    intensity2d_temp(:,1:end-delta_ij)=intensity2d_modi(:,1+delta_ij:end); % South
     intensity_prob(next_event,:)=reshape(intensity2d_temp,1,n_centroids);next_event=next_event+1;
     intensity2d_temp=intensity2d0; % init
-    intensity2d_temp(:,1+dii:end)=intensity2d_modi(:,1:end-dii); % North
+    intensity2d_temp(:,1+delta_ij:end)=intensity2d_modi(:,1:end-delta_ij); % North
     intensity_prob(next_event,:)=reshape(intensity2d_temp,1,n_centroids);next_event=next_event+1;
     
     intensity2d_temp=intensity2d0; % init
-    intensity2d_temp(1:end-dii,:)=intensity2d_modi(1+dii:end,:); % West
+    intensity2d_temp(1:end-delta_ij,:)=intensity2d_modi(1+delta_ij:end,:); % West
     intensity_prob(next_event,:)=reshape(intensity2d_temp,1,n_centroids);next_event=next_event+1;
     intensity2d_temp=intensity2d0; % init
-    intensity2d_temp(1+dii:end,:)=intensity2d_modi(1:end-dii,:); % East
+    intensity2d_temp(1+delta_ij:end,:)=intensity2d_modi(1:end-delta_ij,:); % East
     intensity_prob(next_event,:)=reshape(intensity2d_temp,1,n_centroids);next_event=next_event+1;
     
 end % loop_i
