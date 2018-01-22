@@ -39,7 +39,7 @@ function [ssi,ssi_sorted,xs_freq,ssi_orig,ssi_sorted_orig,xs_freq_orig]=climada_
 % OPTIONAL INPUT PARAMETERS:
 %   check_plot: if =1, plot the SSI distribution, default =0 (no plot)
 %       If climada_hazard_ssi is called with no output arguments and
-%       check:plot is not defined, it set set =1 ba default.
+%       check:plot is not defined, it set set =1 by default.
 %   windspeed_threshold_ms: the windspeed threshold in m/s, default=22 (Lamb)
 % OUTPUTS:
 %   ssi(i): the ssi index for each event i
@@ -165,7 +165,7 @@ fprintf('done, took %3.2f sec. \n',t_elapsed);
 ssi=ssi*1e-12; % arbitrary scaling
 % 8e-9 from old approach, close to Lamb
 
-if nargout==1,return;end % only ssi requested
+if nargout==1 && check_plot==0,return;end % only ssi requested
 
 [ssi_sorted,xs_freq]=climada_damage_exceedence(ssi,hazard.frequency,hazard.event_ID,1);
 
@@ -175,7 +175,6 @@ if isfield(hazard,'orig_event_flag')
     frequency_orig=hazard.frequency(hazard_orig_event_flag)*hazard.event_count/hazard.orig_event_count;
     [ssi_sorted_orig,xs_freq_orig]=climada_damage_exceedence(ssi_orig,frequency_orig,[],1);
 end
-
 
 if check_plot
     %return_period   = 1./xs_freq;

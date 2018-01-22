@@ -17,13 +17,16 @@ function [combined_stats,combined_ssi,country]=wisc_hazard_stats(return_periods,
 % EXAMPLE:
 %   wisc_hazard_set_prob % be careful, this takes time
 %   [combined_stats,combined_ssi]=wisc_hazard_stats([10 25 50 100 250 1000],1,1)
+%   [~,combined_ssi,country]=wisc_hazard_stats([],1,2); SSI only, plot each country separate, too
 % INPUTS:
 % OPTIONAL INPUT PARAMETERS:
-%   return_periods: the return periods for return period maps. No maps if
-%       empty
+%   return_periods: the return periods for return period maps. 
+%       No maps if empty
 %   calc_ssi: whether we calc Storm Severity Index (SSI), =1 (default), or
 %       not (=0)
-%   check_plot: if =1, plot the return period maps and SSI distribution, default =0 (no plot)
+%   check_plot: if =1, plot the return period maps and SSI distribution,
+%       default =0 (no plot)
+%       =2: plot single country SSI results, too
 % OUTPUTS:
 %   combined_stats: the same output as from climada_hazard_stats (see there
 %       for details), just for the combined WISC hazards. Key fields are:
@@ -49,6 +52,7 @@ function [combined_stats,combined_ssi,country]=wisc_hazard_stats(return_periods,
 %           shape_i{i}: the ID in shape_i for country i
 % MODIFICATION HISTORY:
 % David N. Bresch, david.bresch@gmail.com, 20180110, initial
+% David N. Bresch, david.bresch@gmail.com, 20180122, check_plot=2 added
 %-
 
 combined_stats=[];combined_ssi=[]; % init output
@@ -93,9 +97,9 @@ if ~isempty(return_periods) % init
     combined_stats.shape         = hazard_info.shape;
 end
 
-country_i=1;ssi_combined=[];
+country_i=1;ssi_combined=[];title_str='';
 for file_i=1:length(wisc_files)
-%for file_i=1:3
+%for file_i=1:3 % for TEST
     clear hazard;hazard=[];
     hazard_filename=[wisc_dir filesep wisc_files(file_i).name];
     load(hazard_filename); % loads hazard
@@ -104,11 +108,14 @@ for file_i=1:length(wisc_files)
         
         [~,fN]=fileparts(hazard_filename);
         fprintf('< adding %s\n',fN);
-        
+        country.ISO3{country_i}=strrep(strrep(fN,'WISC_',''),'_eur_WS','');
+
+        title_str=[title_str ' ' country.ISO3{country_i}];
+
         if ~isempty(return_periods)
+            
             stats=climada_hazard_stats(hazard,return_periods,0);
             
-            country.ISO3{country_i}=strrep(strrep(fN,'WISC_',''),'_eur_WS','');
             iii=[]; % figure idex of centroids for each country (for speedup)
             for si=1:length(hazard_info.shape.shape_i)
                 % find country.ISO3 in hazard_info.shape.ISO3
@@ -136,7 +143,13 @@ for file_i=1:length(wisc_files)
         end % ~isempty(return_periods)
         
         if calc_ssi>0
-            ssi=climada_hazard_ssi(hazard,0);
+            if check_plot>1,check_plot_fig=figure('Name',country.ISO3{country_i});end
+            ssi=climada_hazard_ssi(hazard,max(check_plot-1,0));
+            if check_plot>1
+                title(country.ISO3{country_i})
+                saveas(check_plot_fig,[climada_global.results_dir filesep ...
+                    'WISC_' country.ISO3{country_i} '_ssi'],'png');delete(check_plot_fig); % save and delete figure
+            end
             if isempty(ssi_combined)
                 ssi_combined      = ssi;
             else
@@ -171,13 +184,15 @@ end
 % --------
 if check_plot
     if ~isempty(combined_stats)
-        figure('Name','return period maps');
+        stats_fig=figure('Name','return period maps');
         climada_hazard_stats(combined_stats,return_periods,1);
+        saveas(stats_fig,[climada_global.results_dir filesep ...
+            'WISC_stats'],'png'); % delete(stats_fig)
     end
     
     if ~isempty(ssi_combined)
         
-        figure('Name','SSI');
+        ssi_fig=figure('Name','SSI');
         plot(xs_freq,ssi_sorted);
         xlabel('xs frequency (years)');ylabel('SSI (arbitrary units)');set(gcf,'Color',[1 1 1]);hold on
         
@@ -185,7 +200,14 @@ if check_plot
             plot(xs_freq_orig,ssi_sorted_orig,'xr');legend({'all events','historic only'});
         end
         
+        title(title_str);
+        
+        saveas(ssi_fig,[climada_global.results_dir filesep ...
+            'WISC_ssi'],'png'); % delete(ssi_fig);
+        
     end
+    fprintf('figures saved in results as WISC_*.png\n');
+    
 end % check_plot
 
 end % wisc_hazard_stats
