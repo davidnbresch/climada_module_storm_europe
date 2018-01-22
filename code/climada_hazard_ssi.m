@@ -38,6 +38,8 @@ function [ssi,ssi_sorted,xs_freq,ssi_orig,ssi_sorted_orig,xs_freq_orig]=climada_
 %       > promted for if not given
 % OPTIONAL INPUT PARAMETERS:
 %   check_plot: if =1, plot the SSI distribution, default =0 (no plot)
+%       If climada_hazard_ssi is called with no output arguments and
+%       check:plot is not defined, it set set =1 ba default.
 %   windspeed_threshold_ms: the windspeed threshold in m/s, default=22 (Lamb)
 % OUTPUTS:
 %   ssi(i): the ssi index for each event i
@@ -62,7 +64,7 @@ if ~climada_init_vars,return;end % init/import global variables
 % poor man's version to check arguments
 % and to set default value where  appropriate
 if ~exist('hazard','var'),hazard=[];end
-if ~exist('check_plot','var'),check_plot=0;end
+if ~exist('check_plot','var'),check_plot=[];end
 if ~exist('windspeed_threshold_ms','var'),windspeed_threshold_ms=22;end
 
 % locate the module's (or this code's) data folder (usually  a folder
@@ -74,7 +76,13 @@ if ~exist('windspeed_threshold_ms','var'),windspeed_threshold_ms=22;end
 % define all parameters here - no parameters to be defined in code below
 %
 
-
+if isempty(check_plot)
+    if nargout==0 
+        check_plot=1;
+    else
+        check_plot=0;
+    end
+end
 % if strcmpi(hazard,'global')
 %     % see PROGRAMMERS APOLOGY in header
 %     clear hazard
@@ -126,12 +134,13 @@ else
     fprintf('> calculating storm severity index for %i events (at %i centroids): ',n_events,n_centroids);
 
     climada_progress2stdout    % init, see terminate below
+    n_event_update=max(10^floor(log10(4123))/10,10);
     
     for event_i=1:n_events
         [~,cols,intensity] = find(hazard.intensity(event_i,:));
         intensity(intensity<windspeed_threshold_ms)=0;
         ssi(event_i) = intensity.^3 * hazard_area_km2(cols)'*1e6; % v^3*m^2=(m/s)^3*m^2=m^5/s^5
-        climada_progress2stdout(event_i,n_events,10,'events'); % update
+        climada_progress2stdout(event_i,n_events,n_event_update,'events'); % update
     end % event_i
     
     % % slower

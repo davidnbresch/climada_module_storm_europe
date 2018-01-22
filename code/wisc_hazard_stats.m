@@ -10,7 +10,7 @@ function [combined_stats,combined_ssi,country]=wisc_hazard_stats(return_periods,
 %
 %   NOTE: this code listens to climada_global.parfor=1 for substantial speedup
 %
-%   previous call: <note the most usual previous call here>
+%   previous call: wisc_hazard_set_prob
 %   next call: <note the most usual next function call here>
 % CALLING SEQUENCE:
 %   [combined_stats,combined_ssi,country]=wisc_hazard_stats(return_periods,calc_ssi,check_plot)
@@ -30,6 +30,10 @@ function [combined_stats,combined_ssi,country]=wisc_hazard_stats(return_periods,
 %       historic: =1 if for historic events only, see check_plot=-1 or -10
 %       return_period(i): return period i
 %       intensity(i,j): intensity for return period i at centroid j
+%       One can easily plot single return period maps using
+%       climada_hazard_plot(combined_stats,1) where 1 for the first return
+%       period etc. and then label e.g. as
+%       title(sprintf('%i yr hazard map',combined_stats.return_period(1)))
 %   combined_ssi: the Storm Severity Index (SSI), a struct with fields:
 %       ssi: the SSI values (for each event)
 %       ssi_sorted: sorted ssi
