@@ -1,4 +1,4 @@
-function hazard_info=wisc_hazard_set_prob(hazard,check_plot,add_fraction,country_ISO3)
+function hazard_info=wisc_hazard_set_prob(country_ISO3,hazard,check_plot,add_fraction)
 % climada WS Europe WISC Copernicus
 % MODULE:
 %   storm_europe
@@ -24,7 +24,7 @@ function hazard_info=wisc_hazard_set_prob(hazard,check_plot,add_fraction,country
 %   previous call: wisc_hazard_set (automaticall invoked, if not run before)
 %   next call: wisc_hazard_stats, climada_hazard_plot
 % CALLING SEQUENCE:
-%   hazard_info=wisc_hazard_set_prob(hazard,check_plot,add_fraction)
+%   hazard_info=wisc_hazard_set_prob(country_ISO3,hazard,check_plot,add_fraction)
 % EXAMPLE:
 %   hazard_info=wisc_hazard_set_prob('test')
 %
@@ -33,21 +33,21 @@ function hazard_info=wisc_hazard_set_prob(hazard,check_plot,add_fraction,country
 %   EDS=climada_EDS_calc(entity,hazard_info);
 %
 % INPUTS:
-%   hazard: the historic hazard set, a climada hazard event set or a
-%       filename (if path is missing, the default haazard folder is prepended)
-%       If empty, the code searches for a WISC_eur_WS_hist hazard set and
-%       runs wisc_hazard_set to generate it if not found
 % OPTIONAL INPUT PARAMETERS:
-%   check_plot: if =1, show check plot(s), =0 not (default, except for TEST
-%       mode)
-%   add_fraction: if =1 (default), add hazard.fraction. Set =0 if memory
-%       troubles and time issus (fractionnot really required for WS, but
-%       you would have to make a local copy of climada_EDS_calc...)
 %   country_ISO3: the countries we will generate a probabilistic hazard set
 %       for, either single country char ='DNK' or a st ={'DNK','NLD'}.
 %       If empty, the setting for country.ISO3 in PARAMETERS is used.
 %       Helpful especially to generate a probabilistic set for one single
 %       country, e.g. country_ISO3='DNK' is the same as hazard='test'.
+%   hazard: the historic hazard set, a climada hazard event set or a
+%       filename (if path is missing, the default haazard folder is prepended)
+%       If empty, the code searches for a WISC_eur_WS_hist hazard set and
+%       runs wisc_hazard_set to generate it if not found
+%   check_plot: if =1, show check plot(s), =0 not (default, except for TEST
+%       mode)
+%   add_fraction: if =1 (default), add hazard.fraction. Set =0 if memory
+%       troubles and time issus (fractionnot really required for WS, but
+%       you would have to make a local copy of climada_EDS_calc...)
 % OUTPUTS:
 %   hazard_info: a climada hazard even set structure, see e.g.
 %       climada_tc_hazard_set for a detailed description of all fields.
@@ -138,6 +138,12 @@ hazard_filename_hist = [climada_global.hazards_dir filesep 'WISC_eur_WS_hist.mat
 % each country in country.ISO3
 hazard_filename = [climada_global.hazards_dir filesep 'WISC_XXX_eur_WS.mat'];
 
+if strcmp(country_ISO3,'test')
+    country_ISO3={'DNK'};
+     fprintf('TEST mode for one single country (%s)\n',country_ISO3{1})
+     hazard='';
+end
+
 if ~isempty(country_ISO3)
     if ischar(country_ISO3)
         country_ISO3_tmp=country_ISO3;clear country_ISO3
@@ -149,11 +155,6 @@ end
 % load the historic set (if not passed in hazard)
 if isempty(hazard),hazard=hazard_filename_hist;end % use default historic set
 if ischar(hazard) % a filename passed, try to load
-    if strcmp(hazard,'test')
-        country.ISO3={'DNK'};
-        fprintf('TEST mode for one single country (%s)\n',country.ISO3{1})
-        hazard=hazard_filename_hist;
-    end
     [fP,fN,fE]=fileparts(hazard);
     if isempty(fP),fP=climada_global.hazards_dir;end
     if isempty(fE),fE='.mat';end
