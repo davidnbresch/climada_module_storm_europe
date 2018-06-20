@@ -22,4 +22,4 @@ this way, climada sources all modules' code upon startup
 
 see climada/docs/climada_manual.pdf to get started
 
-Copyright © 2018, ETH Zürich, David N. Bresch, dbresch@ethz.ch (david.bresch@gmail.com), all rights reserved.“ hinschreiben.
+Copyright © 2018, ETH Zürich, David N. Bresch, dbresch@ethz.ch (david.bresch@gmail.com), all rights reserved.
