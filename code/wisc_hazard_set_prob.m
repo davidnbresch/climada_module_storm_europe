@@ -182,8 +182,8 @@ if exist(hazard_info.filename,'file') % check for consistency with hazard_info f
         % grid ok, now check for requested countries being available in hazard_info
         shape_is=zeros(1,n_countries);
         for shape_i=1:length(admin0_shapes) % convert ISO3 to shape index, as faster
-            country_contains=contains(country.ISO3,admin0_shapes(shape_i).ADM0_A3);
-            if sum(contains(country.ISO3,admin0_shapes(shape_i).ADM0_A3)) % country within set of requestedones
+            country_contains=climada_contains(country.ISO3,admin0_shapes(shape_i).ADM0_A3);
+            if sum(country_contains) % country within set of requested ones
                 shape_is(country_contains) = shape_i;
             end
         end % shape_i
@@ -219,7 +219,7 @@ if ~isfield(hazard_info,'shape_i') % (re)create hazard_info
     t0=clock;
     for shape_i=1:length(admin0_shapes)
         
-        country_contains=contains(country.ISO3,admin0_shapes(shape_i).ADM0_A3);
+        country_contains=climada_contains(country.ISO3,admin0_shapes(shape_i).ADM0_A3);
         if sum(country_contains) % country within set of requestedones
             country_i=find(country_contains);
             
