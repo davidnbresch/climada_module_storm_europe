@@ -37,6 +37,7 @@
 % David N. Bresch, david.bresch@gmail.com, 20180605, new exposure, all NEW
 % David N. Bresch, david.bresch@gmail.com, 20180613, absoute and relative
 % David N. Bresch, david.bresch@gmail.com, 20180616, paths set to work machine-independent
+% David N. Bresch, david.bresch@gmail.com, 20180710, climate scenarios
 %-
 
 global climada_global
@@ -44,16 +45,20 @@ if ~climada_init_vars,return;end % init/import global variables
 
 % PARAMETERS
 %
+%climate_frequency_screw=0; % NO climate chance scenario
+climate_frequency_screw=1.; % multiplier to the frequency
+climate_intensity_a=1.0;climate_intensity_b=0.2; % intensity=a*intensity+b
+%
+% whether we process assets (Value, =0) or properties (=1)
+process_number_of_properties=1; % default=0
+Intensity_threshold_ms=35; % intensity threshold for affected in m/s
+%
 entity_plot=0; % whether we plot the assets (not needed each time)
 upperxlim= 250; % horizontal scale for return period plots
 %
 % whether we show absolute values (=0) or percentage of Value (=1)
 Percentage_Of_Value_Flag=1; % default=0
 upperylim=0.25; % vertical scale for return period plots if Percentage_Of_Value_Flag=1
-%
-% whether we process assets (Value, =0) or properties (=1)
-process_number_of_properties=1; % default=0
-Intensity_threshold_ms=35; % intensity threshold for affected in m/s
 %
 % force asset encoding
 force_encode=0; % default=0, since automatically detected
@@ -95,6 +100,22 @@ hazard_name=['_' hazard_name]; % prepend _
 if strcmpi(hazard_name,'_WISC_GBR_eur_WS')
     hazard_name=''; % default WISC no name
     if Percentage_Of_Value_Flag,upperylim=0.1;end 
+end
+
+if ~isfield(hazard,'climate_comment') && climate_frequency_screw>0
+    hazard.climate_comment=sprintf('CC freq*%2.2f, int*%2.2f+%2.2f',climate_frequency_screw,climate_intensity_a,climate_intensity_b);
+    hazard.frequency=hazard.frequency*climate_frequency_screw;
+    hazard.climate_frequency_screw=climate_frequency_screw;
+    
+    if abs(climate_intensity_a-1)+abs(climate_intensity_b)>0
+        pos=find(hazard.intensity);
+        hazard.intensity(pos)=climate_intensity_a*hazard.intensity(pos)+climate_intensity_b;
+        hazard.climate_intensity_a=climate_intensity_a;
+        hazard.climate_intensity_b=climate_intensity_b;
+    end
+    
+    fprintf('hazard modified, clear hazard to start with original hazard again\n');
+    fprintf('%s\n',hazard.climate_comment);
 end
 
 Intensity_threshold_ms_str=sprintf('%2.2i',Intensity_threshold_ms);
@@ -209,7 +230,9 @@ else
     legend('Location','northeast');
 end
 if process_number_of_properties
-    title(['Damage exceedance frequency curve (gust >' Intensity_threshold_ms_str ' m/s)'])
+    title_str1=['Damage exceedance frequency curve (gust >' Intensity_threshold_ms_str ' m/s)'];
+    title(title_str1)
+    if isfield(hazard,'climate_comment'),title({title_str1,strrep(hazard.climate_comment,'_',' ')});end
     ylabel('% of properties affected')
     saveas(gcf,[fig_dir filesep  'ClimateWise_EDS' mode_str Percentage_Of_Value_Flag_str '_' Intensity_threshold_ms_str hazard_name],fig_ext);
     return
