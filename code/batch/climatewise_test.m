@@ -38,6 +38,7 @@
 % David N. Bresch, david.bresch@gmail.com, 20180613, absoute and relative
 % David N. Bresch, david.bresch@gmail.com, 20180616, paths set to work machine-independent
 % David N. Bresch, david.bresch@gmail.com, 20180710, climate scenarios
+% David N. Bresch, david.bresch@gmail.com, 20180717, new Excel format, reads replacement_value_gbp instead of total_property_value_2016_GBP
 %-
 
 global climada_global
@@ -45,9 +46,9 @@ if ~climada_init_vars,return;end % init/import global variables
 
 % PARAMETERS
 %
-%climate_frequency_screw=0; % NO climate chance scenario
-climate_frequency_screw=1.; % multiplier to the frequency
-climate_intensity_a=1.0;climate_intensity_b=0.2; % intensity=a*intensity+b
+climate_frequency_screw=0; % NO climate chance scenario
+% climate_frequency_screw=1.; % multiplier to the frequency
+% climate_intensity_a=1.0;climate_intensity_b=0.2; % intensity=a*intensity+b
 %
 % whether we process assets (Value, =0) or properties (=1)
 process_number_of_properties=1; % default=0
@@ -84,13 +85,13 @@ hazard_set_file='WISC_GBR_eur_WS'; % fully probabilistic WISC
 %hazard_set_file='WISC_eur_WS_hist'; % historic only
 %%hazard_set_file='GBR_UnitedKingdom_eur_WS'; % Schwierz et al. combined'best' hazard, same as WS_Europe.mat
 %hazard_set_file=[climada_global.modules_dir filesep 'storm_europe/data/hazards' filesep 'WS_Europe.mat']; % Schwierz et al. combined 'best' hazard
-%hazard_set_file=[climada_global.modules_dir filesep 'storm_europe/data/hazards' filesep 'WS_ERA40.mat']; % Schwierz et al. 
-%hazard_set_file=[climada_global.modules_dir filesep 'storm_europe/data/hazards' filesep 'WS_ECHAM_CTL.mat']; % Schwierz et al. 
-%hazard_set_file=[climada_global.modules_dir filesep 'storm_europe/data/hazards' filesep 'WS_ECHAM_A2.mat']; % Schwierz et al. 
-%hazard_set_file=[climada_global.modules_dir filesep 'storm_europe/data/hazards' filesep 'WS_ETHC_CTL.mat']; % Schwierz et al. 
-%hazard_set_file=[climada_global.modules_dir filesep 'storm_europe/data/hazards' filesep 'WS_ETHC_A2.mat']; % Schwierz et al. 
-%hazard_set_file=[climada_global.modules_dir filesep 'storm_europe/data/hazards' filesep 'WS_GKSS_CTL.mat']; % Schwierz et al. 
-%hazard_set_file=[climada_global.modules_dir filesep 'storm_europe/data/hazards' filesep 'WS_GKSS_A2.mat']; % Schwierz et al. 
+%hazard_set_file=[climada_global.modules_dir filesep 'storm_europe/data/hazards' filesep 'WS_ERA40.mat']; % Schwierz et al.
+%hazard_set_file=[climada_global.modules_dir filesep 'storm_europe/data/hazards' filesep 'WS_ECHAM_CTL.mat']; % Schwierz et al.
+%hazard_set_file=[climada_global.modules_dir filesep 'storm_europe/data/hazards' filesep 'WS_ECHAM_A2.mat']; % Schwierz et al.
+%hazard_set_file=[climada_global.modules_dir filesep 'storm_europe/data/hazards' filesep 'WS_ETHC_CTL.mat']; % Schwierz et al.
+%hazard_set_file=[climada_global.modules_dir filesep 'storm_europe/data/hazards' filesep 'WS_ETHC_A2.mat']; % Schwierz et al.
+%hazard_set_file=[climada_global.modules_dir filesep 'storm_europe/data/hazards' filesep 'WS_GKSS_CTL.mat']; % Schwierz et al.
+%hazard_set_file=[climada_global.modules_dir filesep 'storm_europe/data/hazards' filesep 'WS_GKSS_A2.mat']; % Schwierz et al.
 
 % some prep work
 if ~exist('hazard','var'),hazard=[];end % init
@@ -99,7 +100,7 @@ if isempty(hazard),hazard=climada_hazard_load(hazard_set_file);end
 hazard_name=['_' hazard_name]; % prepend _
 if strcmpi(hazard_name,'_WISC_GBR_eur_WS')
     hazard_name=''; % default WISC no name
-    if Percentage_Of_Value_Flag,upperylim=0.1;end 
+    if Percentage_Of_Value_Flag,upperylim=0.1;end
 end
 
 if ~isfield(hazard,'climate_comment') && climate_frequency_screw>0
@@ -116,6 +117,15 @@ if ~isfield(hazard,'climate_comment') && climate_frequency_screw>0
     
     fprintf('hazard modified, clear hazard to start with original hazard again\n');
     fprintf('%s\n',hazard.climate_comment);
+elseif isfield(hazard,'climate_comment')
+    % hazard has been modified, warn the user, if not the same
+    if abs(hazard.climate_frequency_screw-climate_frequency_screw)+...
+            abs(hazard.climate_intensity_a-climate_intensity_a)+...
+            abs(hazard.climate_intensity_b-climate_intensity_b)>0
+        fprintf('WARNING: hazard not in line with climate parameters\n');
+        fprintf('run clear hazard first\n');
+        return
+    end
 end
 
 Intensity_threshold_ms_str=sprintf('%2.2i',Intensity_threshold_ms);
@@ -160,7 +170,11 @@ for exposure_i=1:n_exposures
         entity.assets.filename = exposure_filename;
         entity.assets.lon      = exposure_data.longitude';
         entity.assets.lat      = exposure_data.latitude';
-        entity.assets.Value    = exposure_data.total_property_value_2016_GBP';
+        if isfield(exposure_data,'total_property_value_2016_GBP')
+            entity.assets.Value    = exposure_data.total_property_value_2016_GBP'; % until 20180716
+        else
+            entity.assets.Value    = exposure_data.replacement_value_gbp'; % 20180717
+        end
         
         entity.assets.Value=entity.assets.Value/entity.assets.currency_unit;
         
@@ -168,10 +182,12 @@ for exposure_i=1:n_exposures
         entity.assets.Deductible=entity.assets.Value*0;
         entity.assets.Cover=entity.assets.Value;
         entity.assets.DamageFunID=entity.assets.lon*0+1;
-        entity.assets.postcode_sector=exposure_data.postcode_sector';
+        if isfield(exposure_data,'postcode_sector')
+            entity.assets.postcode_sector=exposure_data.postcode_sector';
+        end
         entity.assets.number_of_properties=exposure_data.number_of_properties';
         entity.assets = climada_assets_complete(entity.assets);
-               
+        
         entity=climada_assets_encode(entity,hazard);
         
         save(entity_savefile,'entity');
@@ -184,7 +200,7 @@ for exposure_i=1:n_exposures
     if ~strcmpi(entity.assets.hazard.filename,hazard.filename) || force_encode
         encode_entity,entity=climada_assets_encode(entity,hazard);
     end
-        
+    
     if process_number_of_properties
         entity.assets.Value=entity.assets.number_of_properties;
         entity.assets.Cover=entity.assets.Value;
@@ -244,7 +260,7 @@ end
 % comparison with UK market portfolio
 % -----------------------------------
 entity_market=climada_entity_load('GBR_UnitedKingdom_10x10');
-entity_market.assets.Value=entity_market.assets.Value*0.75; % convert USD to GBP 
+entity_market.assets.Value=entity_market.assets.Value*0.75; % convert USD to GBP
 V_sum_market_orig=sum(entity_market.assets.Value);
 entity_market=climada_assets_encode(entity_market,hazard); % encode to actual hazard
 
@@ -305,12 +321,12 @@ saveas(gcf,[fig_dir filesep  'ClimateWise_EDS_EMDAT_comparison' Percentage_Of_Va
 % climada_entity_plot(entity) % first plot
 % figure;hist(log10(entity.assets.Value));
 % title('log10(Value)');xlabel('log10(GBP)');ylabel('# data points (rows in Excel)');set(gcf,'Color',[1 1 1]); % second plot
-% 
+%
 % % damage calculation for Barclays
 % % -------------------------------
 % EDS=climada_EDS_calc(entity,[],'Barclays'); % damage calculation for Barclays
 % EDS.damage=EDS.damage*damage_scaling_factor;EDS.ED=EDS.ED*damage_scaling_factor; % crude
-% 
+%
 % % comparison with UK market portfolio
 % % -----------------------------------
 % % (scaled to match Barclays 'market share')
