@@ -9,10 +9,11 @@
 %   the calling function
 %
 %   runs as a batch code to ease testing (and keep hazard sets in memory
-%   the easy way (without global)
+%   the easy way (without global) for speedup
 %
 %   Process the GBR_*.xlsx exposure data in one batch and the commercial ones
-%   ??.xlsx in a second one (see exposure_files in PARAMETERS below)
+%   ??.xlsx in a second one (see exposure_files in PARAMETERS below, but
+%   even better, see climatewise_run) 
 %
 %   for GBR_barclays_sector_agg.xlsx etc:
 %   process_number_of_properties=1;
@@ -32,14 +33,25 @@
 %       AB10 6          57.13707772	-2.122704986	106                     21499132
 %       ...
 %
+%   Only latitude, longitude, replacement_value_gbp and, if available
+%   number of properties, is used.
+%
 %   Please note that for speedup, the hazard once loaded is kept, hence run
 %   clear hazard in case you switch to another hazard set. Read the
 %   PARAMETERS section carefully anyway (an expert code, not for beginners)
 %   Please familiarize yurself with CLIMADA before running this code.
 %
+%   The comparison with UK market portfolio only makes sense for quite well
+%   distributed UK property portfolios (not for commercial). The comparison
+%   with EM-DAT is super-indicative as we scale values and damages to make
+%   apples and pears comparable at all (hence only shown if single peril WS)
+%
+%   Usually called from climatewise_run, see there
+%
 % CALLING SEQUENCE:
 %   climatewise_core
 % EXAMPLE:
+%   climatewise_core % runs for GBR_*_sector_agg.xlsx portfolios today
 %   climatewise_run % calls climatewise_core
 % INPUTS:
 % OPTIONAL INPUT PARAMETERS:
@@ -62,32 +74,36 @@ global climada_global
 if ~climada_init_vars,return;end % init/import global variables
 
 % init variables (first time called as batch)
-if ~exist('climate_frequency_screw','var'),      climate_frequency_screw      =[];end
 if ~exist('process_number_of_properties','var'), process_number_of_properties =[];end
-if ~exist('Intensity_threshold_ms_WS','var'),    Intensity_threshold_ms_WS =[];end
-if ~exist('Intensity_threshold_ms_TC','var'),    Intensity_threshold_ms_TC =[];end
+if ~exist('Intensity_threshold_ms_WS','var'),    Intensity_threshold_ms_WS    =[];end
+if ~exist('Intensity_threshold_ms_TC','var'),    Intensity_threshold_ms_TC    =[];end
+if ~exist('WS_wsgsmax_diff_file','var'),         WS_wsgsmax_diff_file         ='';end
 if ~exist('entity_plot','var'),                  entity_plot                  =[];end
 if ~exist('Percentage_Of_Value_Flag','var'),     Percentage_Of_Value_Flag     =[];end
 if ~exist('exposure_folder','var'),              exposure_folder              ='';end
 if ~exist('exposure_files','var'),               exposure_files               ={};end
+if ~exist('WS_hazard_CC_ext','var'),             WS_hazard_CC_ext             =[];end
+if ~exist('TC_hazard_CC_ext','var'),             TC_hazard_CC_ext             =[];end
+if ~exist('WS_time_i','var'),                    WS_time_i                    =[];end
+if ~exist('wsgsmax_diff_file','var'),            wsgsmax_diff_file            =[];end
 
 % PARAMETERS
 %
 % most parameters are set in climatewise_run, here only for TEST mode
 %
-if isempty(climate_frequency_screw)
-    % the simple climate scenarios
-    climate_frequency_screw=0; % =0: NO climate chance scenario
-    climate_intensity_a=1.0;climate_intensity_b=0;
-    %climate_frequency_screw=1.; % multiplier to the frequency
-    %climate_intensity_a=1.0;climate_intensity_b=0.2; % intensity=a*intensity+b
-end
+% wheter we use a climate change (CC) hazard, provide filename, i.e. for 
+% WISC_GBR_eur_WS_CC01, WS_hazard_CC_ext='_CC01'
+if isempty(WS_hazard_CC_ext),WS_hazard_CC_ext='';end % default='', standard hazard set(s)
+if isempty(TC_hazard_CC_ext),TC_hazard_CC_ext='';end % default='', standard hazard set(s)
+%
+% set some parameters for WS CC hazard sets
+if isempty(WS_time_i),WS_time_i=4;end % make sure this corresponds to WS_hazard_CC_ext
+if isempty(wsgsmax_diff_file),wsgsmax_diff_file = [climada_global.data_dir filesep 'ClimateWise' filesep 'wsgsmax_diff.nc'];end
 %
 % whether we process assets (Value, =0) or properties (=1)
 if isempty(process_number_of_properties),process_number_of_properties=0;end % default=0
 if isempty(Intensity_threshold_ms_WS),Intensity_threshold_ms_WS=35;end % intensity threshold for affected in m/s for WS
 if isempty(Intensity_threshold_ms_TC),Intensity_threshold_ms_TC=55;end % intensity threshold for affected in m/s for TC
-
 %
 if isempty(entity_plot),entity_plot=0;end % whether we plot the assets (not needed each time)
 upperxlim= 250; % horizontal scale for return period plots
@@ -104,25 +120,25 @@ force_encode=0; % default=0, since automatically detected
 if isempty(exposure_folder),exposure_folder=[climada_global.data_dir filesep 'ClimateWise'];end
 if isempty(exposure_files)
     exposure_files={
-        %         'GBR_barclays_sector_agg.xlsx' % GBR_ to indicate GBR only (speedup, must be listed first)
-        %         'GBR_hsbc_sector_agg.xlsx'
-        %         'GBR_lloyds_sector_agg.xlsx'
-        %         'GBR_nationwide_sector_agg.xlsx'
-        %         'GBR_rbs_sector_agg.xlsx'
-        %         'GBR_santander_sector_agg.xlsx'
-        %         'GBR_yorkshire_sector_agg.xlsx'
-        '02.xlsx' % follow the global exposures
-        '03.xlsx'
-        '05.xlsx'
-        '08.xlsx'
-        '12.xlsx'
-        '13.xlsx'
-        '14.xlsx'
-        '15.xlsx'
-        '16.xlsx'
-        '23.xlsx'
-        '24.xlsx'
-        '25.xlsx'
+        'GBR_barclays_sector_agg.xlsx' % GBR_ to indicate GBR only (speedup, must be listed first)
+        'GBR_hsbc_sector_agg.xlsx'
+        'GBR_lloyds_sector_agg.xlsx'
+        'GBR_nationwide_sector_agg.xlsx'
+        'GBR_rbs_sector_agg.xlsx'
+        'GBR_santander_sector_agg.xlsx'
+        'GBR_yorkshire_sector_agg.xlsx'
+%         '02.xlsx' % follow the global exposures
+%         '03.xlsx'
+%         '05.xlsx'
+%         '08.xlsx'
+%         '12.xlsx'
+%         '13.xlsx'
+%         '14.xlsx'
+%         '15.xlsx'
+%         '16.xlsx'
+%         '23.xlsx'
+%         '24.xlsx'
+%         '25.xlsx'
         };
 end
 %
@@ -145,7 +161,8 @@ fig_ext ='png';
 %hazard_set_file=[climada_global.modules_dir filesep 'storm_europe/data/hazards' filesep 'WS_ETHC_A2.mat']; % Schwierz et al.
 %hazard_set_file=[climada_global.modules_dir filesep 'storm_europe/data/hazards' filesep 'WS_GKSS_CTL.mat']; % Schwierz et al.
 %hazard_set_file=[climada_global.modules_dir filesep 'storm_europe/data/hazards' filesep 'WS_GKSS_A2.mat']; % Schwierz et al.
-
+%
+TC_hazard_set='GLB_0360as_TC';
 
 % some prep work
 % --------------
@@ -174,9 +191,9 @@ admin0_shapes=climada_shaperead(admin0_shape_file);
 % now we start
 
 n_exposures=length(exposure_files);
+%n_exposures=2; % TEST
 clear EDS % to re-init
 clear EDS_TC % to re-init
-%n_exposures=2; % TEST
 
 n_perils=1; % default WS (Europe) only, will be set=2 if TC exposure found
 
@@ -244,35 +261,60 @@ for exposure_i=1:n_exposures
     hazard_set_file={};assets_hit={}; % init
     if ~isempty(country_ISO3)
         hazard_set_file{1}=['WISC_' country_ISO3 '_eur_WS']; % single country
+        
+        % if climate change mode, generate WS hazard set CC if first time
+        if ~isempty(WS_hazard_CC_ext)
+            WS_hazard_CC_file = [climada_global.hazards_dir filesep hazard_set_file{1} WS_hazard_CC_ext '.mat'];
+            if ~exist(WS_hazard_CC_file,'file')
+                hazard=climatewise_WS_add_diff(hazard_set_file{1},wsgsmax_diff_file,'wsgsmax_delta_to_baseline',WS_hazard_CC_file,WS_time_i);
+            end
+            hazard_set_file{1}=[hazard_set_file{1} WS_hazard_CC_ext];
+        end % CC
+        
         assets_hit{1}.pos=1:length(entity.assets.lon);
     else
         
         % figure which countries and perils to deal with
+        force_encode=1; % to be on the safe side
         
         add_TC=0; % start with Europe only
         for shape_i=1:length(admin0_shapes) % loop over all countries
             % plot(admin0_shapes(shape_i).X,admin0_shapes(shape_i).Y,'-r','LineWidth',2);hold on; axis equal % check plot
             country_hit=climada_inpolygon(entity.assets.lon,entity.assets.lat,admin0_shapes(shape_i).X,admin0_shapes(shape_i).Y);
             if sum(country_hit)>0
-                fprintf('%i: %s %s %s\n',shape_i,admin0_shapes(shape_i).NAME,admin0_shapes(shape_i).ADM0_A3,admin0_shapes(shape_i).CONTINENT)
+                fprintf('%s %s %s (shape %i):',admin0_shapes(shape_i).NAME,admin0_shapes(shape_i).ADM0_A3,admin0_shapes(shape_i).CONTINENT,shape_i)
                 if strcmpi(admin0_shapes(shape_i).CONTINENT,'Europe')
                     hazard_set_file_test=['WISC_' admin0_shapes(shape_i).ADM0_A3 '_eur_WS'];
                     if exist([climada_global.hazards_dir filesep hazard_set_file_test '.mat'],'file')
-                        hazard_set_file{end+1}=['WISC_' admin0_shapes(shape_i).ADM0_A3 '_eur_WS'];
+                        
+                        % if climate change mode, generate WS hazard set CC if first time
+                        if ~isempty(WS_hazard_CC_ext)
+                            WS_hazard_CC_file = [climada_global.hazards_dir filesep hazard_set_file_test WS_hazard_CC_ext '.mat'];
+                            if ~exist(WS_hazard_CC_file,'file')
+                                hazard=climatewise_WS_add_diff(hazard_set_file_test,wsgsmax_diff_file,'wsgsmax_delta_to_baseline',WS_hazard_CC_file,WS_time_i);
+                            end
+                            hazard_set_file_test=[hazard_set_file_test WS_hazard_CC_ext];
+                        end % CC
+                        
+                        hazard_set_file{end+1}=hazard_set_file_test;
                         assets_hit{end+1}.pos=country_hit;
+                        fprintf(' %s (%i assets hit)\n',hazard_set_file{end},sum(country_hit));
+                    else
+                        fprintf(' not WS exposed\n');
                     end
                 else
                     add_TC=1;n_perils=2;
+                    fprintf(' TC exposed (%i assets hit)\n',sum(country_hit));
                 end
             end
         end % shape_i
         
-        if add_TC,hazard_set_file{end+1}='GLB_0360as_TC';end
+        if add_TC,hazard_set_file{end+1}=[TC_hazard_set TC_hazard_CC_ext];end
         
     end % figure which countries and perils to deal with
     
     n_hazards=length(hazard_set_file);
-    
+        
     for hazard_i=1:n_hazards
         
         [~,fN]=fileparts(hazard.filename);
@@ -281,40 +323,6 @@ for exposure_i=1:n_exposures
             fprintf('loading %s',hazard_set_file{hazard_i});
             hazard=climada_hazard_load(hazard_set_file{hazard_i});
             fprintf(' done\n');
-            
-            if strcmpi(hazard.peril_ID,'WS')
-                if ~isfield(hazard,'climate_comment') && climate_frequency_screw>0
-                    hazard.climate_comment=sprintf('CC freq*%2.2f, int*%2.2f+%2.2f',climate_frequency_screw,climate_intensity_a,climate_intensity_b);
-                    hazard.frequency=hazard.frequency*climate_frequency_screw;
-                    hazard.climate_frequency_screw=climate_frequency_screw;
-                    
-                    if abs(climate_intensity_a-1)+abs(climate_intensity_b)>0
-                        pos=find(hazard.intensity);
-                        hazard.intensity(pos)=climate_intensity_a*hazard.intensity(pos)+climate_intensity_b;
-                        hazard.climate_intensity_a=climate_intensity_a;
-                        hazard.climate_intensity_b=climate_intensity_b;
-                    end
-                    
-                    fprintf('hazard modified, clear hazard to start with original hazard again\n');
-                    fprintf('%s\n',hazard.climate_comment);
-                elseif isfield(hazard,'climate_comment')
-                    % hazard has been modified, warn the user, if not the same
-                    if abs(hazard.climate_frequency_screw-climate_frequency_screw)+...
-                            abs(hazard.climate_intensity_a-climate_intensity_a)+...
-                            abs(hazard.climate_intensity_b-climate_intensity_b)>0
-                        fprintf('WARNING: hazard not in line with climate parameters\n');
-                        fprintf('run clear hazard first\n');
-                        return
-                    end
-                end
-            end % CC for WS
-            
-            if strcmpi(hazard.peril_ID,'TC')
-                if ~isfield(hazard,'climate_comment') && climate_frequency_screw>0
-                    fprintf('TC climate change hazard not implemented yet, aborted\n');
-                    return
-                end
-            end % CC for TC
             
         else
             fprintf('hazard already loaded (%s)\n',fN);
@@ -353,13 +361,16 @@ for exposure_i=1:n_exposures
             if isfield(entity.damagefunctions,'datenum'),entity.damagefunctions=rmfield(entity.damagefunctions,'datenum');end
         end % process_number_of_properties
         
+        entity_assets_Value=entity.assets.Value; % store all, see below for store back
         if n_hazards>1 && strcmp(hazard.peril_ID,'WS') % make sure we do not deal with any WS asset twice (close to country border)
-            temp_Value=entity.assets.Value; % copy Values
             entity.assets.Value=entity.assets.Value*0; % set all to zero
-            entity.assets.Value(assets_hit{hazard_i}.pos)=temp_Value(assets_hit{hazard_i}.pos); % keep only the ones relevant
+            entity.assets.Value(assets_hit{hazard_i}.pos)=entity_assets_Value(assets_hit{hazard_i}.pos); % keep only the ones relevant
         end
         
         EDS_local=climada_EDS_calc(entity,hazard,exposure_name);
+        
+        % store all assets back, see above
+        entity.assets.Value=entity_assets_Value;
         
         if strcmpi(hazard.peril_ID,'WS')
             if hazard_i==1
@@ -374,7 +385,7 @@ for exposure_i=1:n_exposures
         
     end % hazard_i
     EDS(exposure_i).annotation_name=exposure_name;
-    EDS(exposure_i).peril_ID='WS';
+    %EDS(exposure_i).peril_ID='WS';
     
 end % exposure_i
 
@@ -389,13 +400,7 @@ for peril_i=1:n_perils
         EDS=EDS_TC;
         Intensity_threshold_ms_str=Intensity_threshold_ms_TC_str;
     end
-    hazard_cc_name='';
-    if isfield(hazard,'climate_comment')
-        hazard_cc_name=['_' strrep(hazard.climate_comment,' ','')];
-        hazard_cc_name=strrep(hazard_cc_name,'*','x');
-        hazard_cc_name=strrep(hazard_cc_name,'.','d');
-        hazard_cc_name=strrep(hazard_cc_name,',','_');
-    end
+    hazard_cc_name=WS_hazard_CC_ext;
     
     % remove empty EDSs
     EDS_ok_pos=[];
@@ -420,9 +425,9 @@ for peril_i=1:n_perils
         legend('Location','northeast');
     end
     if process_number_of_properties
-        title_str1=[hazard_name ' damage exceedance frequency curve (gust >' Intensity_threshold_ms_str ' m/s)'];
+        title_str1=[hazard_name strrep(hazard_cc_name,'_',' ') ' damage exceedance frequency curve (gust >' Intensity_threshold_ms_str ' m/s)'];
         title(title_str1)
-        if isfield(hazard,'climate_comment'),title({title_str1,strrep(hazard.climate_comment,'_',' ')});end
+        %if isfield(hazard,'climate_comment'),title({title_str1,strrep(hazard.climate_comment,'_',' ')});end
         ylabel('% of properties affected')
         saveas(gcf,[fig_dir filesep  'ClimateWise_EDS' mode_str Percentage_Of_Value_Flag_str '_' Intensity_threshold_ms_str '_' hazard_name hazard_cc_name],fig_ext);
         return
@@ -430,7 +435,7 @@ for peril_i=1:n_perils
         saveas(gcf,[fig_dir filesep  'ClimateWise_EDS' mode_str Percentage_Of_Value_Flag_str '_' hazard_name hazard_cc_name],fig_ext);
     end
     
-    if peril_i==1 && ~process_number_of_properties
+    if n_perils==1 && ~process_number_of_properties
         
         % comparison with UK market portfolio
         % -----------------------------------
@@ -453,7 +458,7 @@ for peril_i=1:n_perils
         else
             legend('Location','northeast');
         end
-        xlim([0 upperxlim]);title([hazard_name ' damage exceedance frequency curve'])
+        xlim([0 upperxlim]);title([hazard_name strrep(hazard_cc_name,'_',' ') ' damage exceedance frequency curve'])
         saveas(gcf,[fig_dir filesep  'ClimateWise_EDS_comparison' Percentage_Of_Value_Flag_str '_' hazard_name hazard_cc_name],fig_ext);
         
         % comparison with EM-DAT
@@ -475,58 +480,10 @@ for peril_i=1:n_perils
             legend_location='northeast';
         end
         [legend_str,legend_handle]=emdat_barplot(em_data,'','','EM-DAT indexed',legend_str,legend_handle,legend_location);
-        title(sprintf('Damage exceedance curve, total asset value GBP %2.f bn',sum(entity_market.assets.Value)/1e3))
+        title(sprintf('%s %s damage exceedance curve, total asset value GBP %2.f bn',hazard_name,strrep(hazard_cc_name,'_',' '),sum(entity_market.assets.Value)/1e3))
         saveas(gcf,[fig_dir filesep  'ClimateWise_EDS_EMDAT_comparison' Percentage_Of_Value_Flag_str '_' hazard_name hazard_cc_name],fig_ext);
     end
     
     if peril_i==2,EDS_TC=EDS;end % as we cleaned it up etc (only valid entries)
     
 end % peril_i
-
-% ------------------------------------------------------------------------
-% old code, 20170729:
-%
-% % global scaling factor to bring damage in line with EM-DAT
-% % (CRUDE way of a rough calibration)
-% damage_scaling_factor=0.4;
-%
-% % read Barclay data into climada
-% % ------------------------------
-% entity=climada_entity_read('ClimateWise_Barclays TEST02.xlsx','GBR_UnitedKingdom_eur_WS');
-% entity.assets.currency_unit=1e6; % all in mio
-% entity.assets.Value=entity.assets.Value/entity.assets.currency_unit;
-% entity.assets.Cover=entity.assets.Value;
-% climada_entity_plot(entity) % first plot
-% figure;hist(log10(entity.assets.Value));
-% title('log10(Value)');xlabel('log10(GBP)');ylabel('# data points (rows in Excel)');set(gcf,'Color',[1 1 1]); % second plot
-%
-% % damage calculation for Barclays
-% % -------------------------------
-% EDS=climada_EDS_calc(entity,[],'Barclays'); % damage calculation for Barclays
-% EDS.damage=EDS.damage*damage_scaling_factor;EDS.ED=EDS.ED*damage_scaling_factor; % crude
-%
-% % comparison with UK market portfolio
-% % -----------------------------------
-% % (scaled to match Barclays 'market share')
-% entity_market=climada_entity_load('GBR');
-% entity_market.assets.currency_unit=1e6; % all in mio
-% entity_market.assets.Value=entity_market.assets.Value/entity_market.assets.currency_unit;
-% entity_market.assets.Cover=entity_market.assets.Value;
-% V_sum_market=sum(entity_market.assets.Value);V_sum=sum(entity.assets.Value);
-% entity_market.assets.Value=entity_market.assets.Value/V_sum_market*V_sum; % scale
-% entity_market.assets.Cover=entity_market.assets.Value;
-% EDS_market=climada_EDS_calc(entity_market,'GBR_UnitedKingdom_eur_WS','Market portfolio, scaled');
-% EDS_market.damage=EDS_market.damage*damage_scaling_factor;EDS_market.ED=EDS_market.ED*damage_scaling_factor; % crude
-% figure;[~,~,legend_str,legend_handle]=climada_EDS_DFC(EDS,EDS_market); title('Damage exceedance frequency curve') % third plot
-% fprintf('annual expected damage %f mio GBP (market scaled %f)\n',EDS.ED/1e6,EDS_market.ED/1e6)
-% fprintf('max damage %f bn GBP (market scaled %f)\n',max(EDS.damage)/1e9,max(EDS_market.damage)/1e9)
-
-% % comparison with EM-DAT
-% % ----------------------
-% em_data=emdat_read('','GBR','-WS',1,1);
-% em_data.damage=em_data.damage/V_sum_market*V_sum/entity.assets.currency_unit;
-% em_data.damage_orig=em_data.damage_orig/V_sum_market*V_sum/entity.assets.currency_unit;
-% em_data.DFC.damage=em_data.DFC.damage/V_sum_market*V_sum/entity.assets.currency_unit;
-% em_data.DFC_orig.damage=em_data.DFC_orig.damage/V_sum_market*V_sum/entity.assets.currency_unit;
-% [legend_str,legend_handle]=emdat_barplot(em_data,'','','EM-DAT indexed',legend_str,legend_handle);
-% title(sprintf('Damage exceedance curve, total asset value GBP %2.f bn',sum(entity.assets.Value)/1e3))
