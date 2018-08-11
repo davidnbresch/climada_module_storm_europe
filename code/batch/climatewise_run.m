@@ -229,7 +229,7 @@ end
 % second for climate change
 % -------------------------
 clear hazard % to be on the safe side
-WS_hazard_CC_ext='_CC2015';     % climate change
+WS_hazard_CC_ext='_CC2045';     % climate change
 TC_hazard_CC_ext='_rcp45_2030'; % climate change
 fprintf('\n\n*** ??.xlsx climate change ***\n\n');
 
