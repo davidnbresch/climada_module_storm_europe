@@ -209,22 +209,34 @@ fprintf('\n\n*** ??.xlsx risk today ***\n\n');
 
 climatewise_core % call the core function
 
-% store results for risk today
-DFC_WS=climada_EDS2DFC(EDS_WS); % calculate all damage excedance frequency curves
-reference_pos= DFC_WS(1).return_period==reference_return_period;
+if exist('EDS_WS','var')
+    
+    EDS_WS_today=EDS_WS;
+    
+    % store results for risk today
+    DFC_WS=climada_EDS2DFC(EDS_WS); % calculate all damage excedance frequency curves
+    reference_pos= DFC_WS(1).return_period==reference_return_period;
+    
+    for DFC_i=1:length(DFC_WS)
+        XX_WS_result_struct(DFC_i).annotation_name=DFC_WS(DFC_i).annotation_name;
+        XX_WS_result_struct(DFC_i).risk_today=DFC_WS(DFC_i).damage(reference_pos);
+    end
+    
+end % WS
 
-for DFC_i=1:length(DFC_WS)
-    XX_WS_result_struct(DFC_i).annotation_name=DFC_WS(DFC_i).annotation_name;
-    XX_WS_result_struct(DFC_i).risk_today=DFC_WS(DFC_i).damage(reference_pos);
-end
-
-DFC_TC=climada_EDS2DFC(EDS_TC); % calculate all damage excedance frequency curves
-reference_pos= DFC_TC(1).return_period==reference_return_period;
-
-for DFC_i=1:length(DFC_TC)
-    XX_TC_result_struct(DFC_i).annotation_name=DFC_TC(DFC_i).annotation_name;
-    XX_TC_result_struct(DFC_i).risk_today=DFC_TC(DFC_i).damage(reference_pos);
-end
+if exist('EDS_TC','var')
+    
+    EDS_TC_today=EDS_TC;
+    
+    DFC_TC=climada_EDS2DFC(EDS_TC); % calculate all damage excedance frequency curves
+    reference_pos= DFC_TC(1).return_period==reference_return_period;
+    
+    for DFC_i=1:length(DFC_TC)
+        XX_TC_result_struct(DFC_i).annotation_name=DFC_TC(DFC_i).annotation_name;
+        XX_TC_result_struct(DFC_i).risk_today=DFC_TC(DFC_i).damage(reference_pos);
+    end
+    
+end % TC
 
 % second for climate change
 % -------------------------
@@ -235,60 +247,73 @@ fprintf('\n\n*** ??.xlsx climate change ***\n\n');
 
 climatewise_core % call the core function
 
-% store results for climate change
-DFC_WS=climada_EDS2DFC(EDS_WS); % calculate all damage excedance frequency curves
-reference_pos = DFC_WS(1).return_period==reference_return_period;
-
-for DFC_i=1:length(DFC_WS)
-    if strcmpi(DFC_WS(DFC_i).annotation_name,XX_WS_result_struct(DFC_i).annotation_name)
-        XX_WS_result_struct(DFC_i).risk_climate=DFC_WS(DFC_i).damage(reference_pos);
-        XX_WS_result_struct(DFC_i).risk_delta=(XX_WS_result_struct(DFC_i).risk_climate/XX_WS_result_struct(DFC_i).risk_today-1)*100;
-    else
-        fprintf('ERROR: exposure_files mismatch, aborted\n');
-        return
-    end
-end % DFC_i for WS
-
-DFC_TC=climada_EDS2DFC(EDS_TC); % calculate all damage excedance frequency curves
-reference_pos = DFC_TC(1).return_period==reference_return_period;
-
-for DFC_i=1:length(DFC_TC)
-    if strcmpi(DFC_TC(DFC_i).annotation_name,XX_TC_result_struct(DFC_i).annotation_name)
-        XX_TC_result_struct(DFC_i).risk_climate=DFC_TC(DFC_i).damage(reference_pos);
-        XX_TC_result_struct(DFC_i).risk_delta=(XX_TC_result_struct(DFC_i).risk_climate/XX_TC_result_struct(DFC_i).risk_today-1)*100;
-    else
-        fprintf('ERROR: exposure_files mismatch, aborted\n');
-        return
-    end
-end % DFC_i for TC
-
 % figure what we display
-if     log10(EDS_WS(1).currency_unit)==0
-    unit_str=EDS_WS(1).Value_unit;
-elseif log10(EDS_WS(1).currency_unit)==6
-    unit_str=[EDS_WS(1).Value_unit ' mio'];
-elseif log10(EDS_WS(1).currency_unit)==9
-    unit_str=[EDS_WS(1).Value_unit ' bn'];
+if     log10(EDS(1).currency_unit)==0
+    unit_str=EDS(1).Value_unit;
+elseif log10(EDS(1).currency_unit)==6
+    unit_str=[EDS(1).Value_unit ' mio'];
+elseif log10(EDS(1).currency_unit)==9
+    unit_str=[EDS(1).Value_unit ' bn'];
 end
 
-fprintf('\nrisk in %s\n',unit_str);
-fprintf('WS exposure \t today \t\t climate \t\t delta\n');
-for DFC_i=1:length(XX_WS_result_struct)
-    fprintf('%s: \t\t %2.3f \t\t %2.3f \t\t %2.1f%%\n ',...
-        XX_WS_result_struct(DFC_i).annotation_name,...
-        XX_WS_result_struct(DFC_i).risk_today,...
-        XX_WS_result_struct(DFC_i).risk_climate,...
-        XX_WS_result_struct(DFC_i).risk_delta);
-end
+if exist('EDS_WS','var')
+    
+    EDS_WS_climate=EDS_WS;
+    
+    % store results for climate change
+    DFC_WS=climada_EDS2DFC(EDS_WS); % calculate all damage excedance frequency curves
+    reference_pos = DFC_WS(1).return_period==reference_return_period;
+    
+    for DFC_i=1:length(DFC_WS)
+        if strcmpi(DFC_WS(DFC_i).annotation_name,XX_WS_result_struct(DFC_i).annotation_name)
+            XX_WS_result_struct(DFC_i).risk_climate=DFC_WS(DFC_i).damage(reference_pos);
+            XX_WS_result_struct(DFC_i).risk_delta=(XX_WS_result_struct(DFC_i).risk_climate/XX_WS_result_struct(DFC_i).risk_today-1)*100;
+        else
+            fprintf('ERROR: exposure_files mismatch, aborted\n');
+            return
+        end
+    end % DFC_i for WS
+    
+    fprintf('\nrisk in %s\n',unit_str);
+    fprintf('WS exposure \t today \t\t climate \t\t delta\n');
+    for DFC_i=1:length(XX_WS_result_struct)
+        fprintf('%s: \t\t %2.3f \t\t %2.3f \t\t %2.1f%%\n ',...
+            XX_WS_result_struct(DFC_i).annotation_name,...
+            XX_WS_result_struct(DFC_i).risk_today,...
+            XX_WS_result_struct(DFC_i).risk_climate,...
+            XX_WS_result_struct(DFC_i).risk_delta);
+    end
+    
+end % WS
 
-fprintf('TC exposure \t today \t\t climate \t\t delta\n');
-for DFC_i=1:length(XX_TC_result_struct)
-    fprintf('%s: \t\t %2.3f \t\t %2.3f \t\t %2.1f%%\n ',...
-        XX_TC_result_struct(DFC_i).annotation_name,...
-        XX_TC_result_struct(DFC_i).risk_today,...
-        XX_TC_result_struct(DFC_i).risk_climate,...
-        XX_TC_result_struct(DFC_i).risk_delta);
-end
+if exist('EDS_TC','var')
+    
+    EDS_TC_climate=EDS_TC;
+    
+    DFC_TC=climada_EDS2DFC(EDS_TC); % calculate all damage excedance frequency curves
+    reference_pos = DFC_TC(1).return_period==reference_return_period;
+    
+    for DFC_i=1:length(DFC_TC)
+        if strcmpi(DFC_TC(DFC_i).annotation_name,XX_TC_result_struct(DFC_i).annotation_name)
+            XX_TC_result_struct(DFC_i).risk_climate=DFC_TC(DFC_i).damage(reference_pos);
+            XX_TC_result_struct(DFC_i).risk_delta=(XX_TC_result_struct(DFC_i).risk_climate/XX_TC_result_struct(DFC_i).risk_today-1)*100;
+        else
+            fprintf('ERROR: exposure_files mismatch, aborted\n');
+            return
+        end
+    end % DFC_i for TC
+    
+    fprintf('TC exposure \t today \t\t climate \t\t delta\n');
+    for DFC_i=1:length(XX_TC_result_struct)
+        fprintf('%s: \t\t %2.3f \t\t %2.3f \t\t %2.1f%%\n ',...
+            XX_TC_result_struct(DFC_i).annotation_name,...
+            XX_TC_result_struct(DFC_i).risk_today,...
+            XX_TC_result_struct(DFC_i).risk_climate,...
+            XX_TC_result_struct(DFC_i).risk_delta);
+    end
+    
+end % TC
+
 
 % risk in GBP mio
 % WS exposure today 	 climate 	 delta
@@ -312,3 +337,39 @@ end
 %  15: 		 0.002 		 0.002 		 26.6%
 %  25: 		 0.475 		 0.578 		 21.8%
 %  combined: 1.566 		 1.890 		 20.7%
+
+% % special check for negative delta climate WS result for 02
+% % ---------------------------------------------------------
+% entity=climada_entity_load('_ClimateWise_02');
+% hazard_today=climada_hazard_load('WISC_FRA_eur_WS');
+% hazard_climate=climada_hazard_load('WISC_FRA_eur_WS_CC2045');
+% entity=climada_assets_encode(entity,hazard_today);
+% 
+% % via EDS_WS.ED_at_centroid asset 91 found with largest diff, via
+% % entity.assets.centroid_index(91) centroid 34992 found
+% % via EDS_WS.damage event 3227 found as max difference 
+% hazard_today.intensity(3227,34992) % 43.9049
+% hazard_climate.intensity(3227,34992) % 43.7067
+% 
+% % now to find the delta
+% wsgsmax_diff_file = [climada_global.data_dir filesep 'ClimateWise' filesep 'wsgsmax_diff.nc'];
+% wsgsmax_diff_var  = 'wsgsmax_delta_to_baseline';
+% nc.time          = ncread(wsgsmax_diff_file,'time');
+% nc.lon           = double(ncread(wsgsmax_diff_file,'lon'));
+% nc.lat           = double(ncread(wsgsmax_diff_file,'lat'));
+% nc.wsgsmax_delta = ncread(wsgsmax_diff_file,wsgsmax_diff_var);
+% 
+% wsgsmax_delta=griddata(nc.lon,nc.lat,nc.wsgsmax_delta(:,:,4),hazard.lon,hazard.lat,'nearest');
+% size(wsgsmax_delta)
+% wsgsmax_delta(34992) % -0.1983
+% % --> that's exactly the intensity difference we found, all consistent
+% 
+% min(min(nc.wsgsmax_delta)) % -1.5184
+% %  --> there are negative changes
+% 
+% min(min(wsgsmax_delta)) % -0.9295
+% % --> the largest negative deviation at a centroids
+% 
+% climada_color_plot(wsgsmax_delta,hazard.lon,hazard.lat);hold on
+% plot(entity.assets.lon(91),entity.assets.lat(91),'xr');
+% text(entity.assets.lon(91)+0.2,entity.assets.lat(91),'-0.1983')

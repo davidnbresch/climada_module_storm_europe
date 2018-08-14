@@ -393,6 +393,7 @@ for peril_i=1:n_perils
     
     if peril_i==1
         hazard_name='WS';
+        EDS_WS=EDS; % to save it
         Intensity_threshold_ms_str=Intensity_threshold_ms_WS_str;
     else
         hazard_name='TC';
