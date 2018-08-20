@@ -92,6 +92,9 @@ end % file
 hazard_blend.frequency=hazard_blend.frequency/hazard_blend.hazard_count*frequency_screw;
 hazard_blend.frequency_screw_applied=frequency_screw;
 
+% delete fraction for compatibility with country_risk_calc
+if isfield(hazard_blend,'fraction'), hazard_blend = rmfield(hazard_blend,'fraction'); end
+
 hazard=hazard_blend;
 hazard.intensity(hazard.intensity<15)=0;
 % apply intensity_screw after cutoff, in order to allow for 'turn back' without loosing events
