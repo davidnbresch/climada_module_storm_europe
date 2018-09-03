@@ -98,8 +98,7 @@ if isempty(TC_hazard_CC_ext),TC_hazard_CC_ext='';end % default='', standard haza
 %
 % set some parameters for WS CC hazard sets
 if isempty(WS_time_i),WS_time_i=4;end % make sure this corresponds to WS_hazard_CC_ext
-if isempty(wsgsmax_diff_file),wsgsmax_diff_file = [climada_global.data_dir filesep 'ClimateWise' filesep 'wsgsmax_diff.nc'];end
-%
+if isempty(wsgsmax_diff_file),wsgsmax_diff_file = [climada_global.data_dir filesep 'ClimateWise' filesep 'rcp45-wsgsmax-99pctl-diff.nc'];end % old 'wsgsmax_diff.nc'
 % whether we process assets (Value, =0) or properties (=1)
 if isempty(process_number_of_properties),process_number_of_properties=0;end % default=0
 if isempty(Intensity_threshold_ms_WS),Intensity_threshold_ms_WS=35;end % intensity threshold for affected in m/s for WS

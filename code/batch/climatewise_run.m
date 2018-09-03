@@ -58,11 +58,12 @@ if ~climada_init_vars,return;end % init/import global variables
 % the reference return period we express the results for
 reference_return_period=100;
 %
-wsgsmax_diff_file = [climada_global.data_dir filesep 'ClimateWise' filesep 'wsgsmax_diff.nc'];
+wsgsmax_diff_file = [climada_global.data_dir filesep 'ClimateWise' filesep 'rcp45-wsgsmax-99pctl-diff.nc']; % old was 'wsgsmax_diff.nc'
+%wsgsmax_diff_file = [climada_global.data_dir filesep 'ClimateWise' filesep 'rcp85-wsgsmax-99pctl-diff.nc'];
 % since the times on the netCDF file wsgsmax_diff.nc are from a
 % non-standard starting point, we hard-wire them:
 WS_climate_scenario_times=[2015 20125 2035 2045]; % reference 1960-1990
-WS_time_i=4; % for timestep 1 on wsgsmax_diff.nc
+WS_time_i=4; % for timestep 1 on rcp??-wsgsmax-99pctl-diff.nc
 %
 Intensity_threshold_ms_WS=35; % intensity threshold for affected in m/s for WS
 Intensity_threshold_ms_TC=55; % intensity threshold for affected in m/s for TC
@@ -110,7 +111,9 @@ end
 % second for risk climate change
 % ------------------------------
 clear hazard % to be on the safe side
-WS_hazard_CC_ext = sprintf('_CC%4.4i',WS_climate_scenario_times(WS_time_i)); % make sure WS_time_i matches
+[~,fN]=fileparts(wsgsmax_diff_file);
+WS_hazard_CC_ext = sprintf('_%s_%4.4i',fN(1:5),WS_climate_scenario_times(WS_time_i)); % make sure WS_time_i matches
+%WS_hazard_CC_ext = sprintf('_CC%4.4i',WS_climate_scenario_times(WS_time_i)); % make sure WS_time_i matches
 fprintf('\n\n*** GBR_*.xlsx risk climate change ***\n\n');
 
 climatewise_core % call the core function
