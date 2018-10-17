@@ -5,7 +5,9 @@ function hazard=climada_cosmoensemble2hazard(cosmo_filename,params,entity)
 % NAME:
 %   climada_cosmoensemble2hazard
 % PURPOSE:
+
 %   read COSMO ensemble windfields from netCDF and store into climada hazard structure, 
+
 %   ready for movie generation, if an entity is passed on, too.
 %
 %   next call: climada_hazard_stats, climada_event_damage_animation
@@ -19,6 +21,7 @@ function hazard=climada_cosmoensemble2hazard(cosmo_filename,params,entity)
 %   p.npoints=799;p.Position=[1 1 3840 2160];climada_event_damage_animation('',p)
 %
 %   params=climada_cosmoensemble2hazard('params') % return default parameters
+
 % INPUTS:
 %   cosmo_filename: filename of the netCDF file with COSMO output
 %       > promted for if not given, path and .nc appended if missing
@@ -52,7 +55,6 @@ function hazard=climada_cosmoensemble2hazard(cosmo_filename,params,entity)
 %       needed for animation generation, i.e. hazard.damage and hazard.assets
 % MODIFICATION HISTORY:
 % Thomas R??sli, thomas.roeoesli@usys.ethz.ch, 20181017, initial, based on climada_cosmo2hazard by David N. Bresch, david.bresch@gmail.com, 20170707
-
 %-
 
 hazard=[]; % init output
