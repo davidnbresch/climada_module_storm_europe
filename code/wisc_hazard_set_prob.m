@@ -300,7 +300,7 @@ for event_i=1:n_events % for fast TEST, use event_i=55:56 for DNK
     
     intensity_hist1D=hazard_intensity(event_i,:); % make full
     intensity2D=reshape(full(intensity_hist1D),hazard_lonlat_size); % covert to 2D
-    intensity_prob=climada_ws_hist2prob(intensity2D); % input is 2D, output is 1D
+    intensity_prob=climada_ws_hist2prob(intensity2D,'',n_prob_events); % input is 2D, output is 1D
     intensity_prob(intensity_prob<wind_threshold)=0; % set low winds to zero
     
     i1=1+(event_i-1)*(n_prob_events+1);
