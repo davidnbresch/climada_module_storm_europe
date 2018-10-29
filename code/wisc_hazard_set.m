@@ -197,8 +197,13 @@ for file_i=1:n_files
     if file_i==1 % take grid info from first file
         fprintf('pre-processing %s',wisc_file_1);
         nc.info = ncinfo(wisc_file_1);
-        nc.lat  = ncread(wisc_file_1,'latitude');
-        nc.lon  = ncread(wisc_file_1,'longitude');
+        if ismember('latitude',{nc.info.Variables.Name})
+            nc.lat  = ncread(wisc_file_1,'latitude');
+            nc.lon  = ncread(wisc_file_1,'longitude');
+        else
+            nc.lat  = ncread(wisc_file_1,'lat');
+            nc.lon  = ncread(wisc_file_1,'lon');
+        end
         % construct the 2D grid, if needed
         if size(nc.lat,2)==1,[nc.lat,nc.lon] = meshgrid(nc.lat,nc.lon);end
         
