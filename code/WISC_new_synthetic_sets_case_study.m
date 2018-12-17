@@ -55,7 +55,7 @@ synth_folder2 = 'D:\Documents_DATA\WISC_data_20180411\Event Set\'; % This folder
 hist_folder = 'D:\Documents_DATA\WISC_data_20181029\Historic Storm Footprints\'; % This folder should contain the file mentioned above
 
 %% quick look comparing the SSI
-
+global climada_global
 
 % synth_folder = 'D:\Documents_DATA\WISC_data_20170918\Synthetic Event Set\';
 % SSI_synth_v1 = xlsread([synth_folder 'eventset_summary.csv'],'D2:D7661');
@@ -103,8 +103,8 @@ elseif exist(hazard_wisc_hist_file,'file')
     fprintf('loading %s\n',hazard_wisc_hist_file);
     hazard_wisc_hist=climada_hazard_load(hazard_wisc_hist_file);
 else % create WISC historic hazard
-    wisc_hist_netcdf_glob = [hist_folder 'C3S_WISC_FOOTPRINT_NETCDF_0100' filesep 'fp_*.nc'];
-    wisc_hist_netcdf_files = dir(wisc_hist_netcdf_glob);
+    wisc_hist_netcdf_glob = [hist_folder 'C3S_WISC_FOOTPRINT_NETCDF_0100' filesep 'fp_era*.nc'];
+    wisc_hist_netcdf_files = [dir(wisc_hist_netcdf_glob)];
     if numel(wisc_hist_netcdf_files) == 0
         % unzip downloaded zip file
         untar([hist_folder 'C3S_WISC_FOOTPRINT_NETCDF_0100.tgz'],[hist_folder 'C3S_WISC_FOOTPRINT_NETCDF_0100']);
@@ -116,6 +116,12 @@ else % create WISC historic hazard
             'to this file location.']); 
         end
     end
+    % omit era5 files
+    wisc_hist_era5_glob = [hist_folder 'C3S_WISC_FOOTPRINT_NETCDF_0100' filesep 'fp_eraer5*.nc'];
+    if numel(dir(wisc_hist_era5_glob))>0
+        movefile(wisc_hist_era5_glob,[hist_folder filesep 'era5']);
+    end % end omitting era5 files
+    
     % generate the hazard event set from netCDF footprints
     % ====================================================
     hazard_wisc_hist=wisc_hazard_set(wisc_hist_netcdf_glob,0,hazard_wisc_hist_file);
@@ -168,6 +174,9 @@ end % version_i
 if ~isfield(hazard_wisc_hist,'on_land')
     country_shapes=climada_shaperead(climada_global.map_border_file,1,1); % reads .mat
     hazard_wisc_hist.on_land = climada_inshape(hazard_wisc_hist.lat, hazard_wisc_hist.lon, country_shapes);
+    hazard = hazard_wisc_hist;
+    save([hazard_wisc_hist_file],'hazard','-v7.3')
+    clear hazard
 end
 tic
 [SSI_hist_th, SSI_struct_hist_th] = climada_hazard_SSI_calc(hazard_wisc_hist,25,hazard_wisc_hist.area_km2);
@@ -300,13 +309,15 @@ YDS(3).yyyy = 1:numel([YDS_i(1:5).yyyy])
 YDS(3).frequency = [YDS_i(1:5).frequency]/5
 YDS(3).hazard = YDS(2).hazard
 YDS(3).assets = YDS(2).assets
-YDS(3).annotation_name = 'WISC synth eur WS'
+YDS(3).annotation_name = 'WISC synthethic v3'
+YDS(1).annotation_name = 'WISC historic'
 figure; climada_EDS_DFC(YDS([1 3]))
 % figure; climada_EDS_DFC(YDS([1 3 4]))
 % combine EDS_i
 EDS(3).damage = [EDS_i(1:5).damage]
 EDS(3).frequency = [EDS_i(1:5).frequency]/5
-EDS(3).annotation_name = 'WISC synth eur WS'   
+EDS(3).annotation_name = 'WISC synthethic v3'
+EDS(1).annotation_name = 'WISC historic'
 figure; climada_EDS_DFC(EDS([1 3]))
 
 
@@ -323,16 +334,16 @@ figure; climada_EDS_DFC(EDS([1 3]))
 % figure; climada_EDS_DFC(YDS([1 3 4]))
 
 figure; boxplot([EDS([1 3]).damage],repelem([0 1],[numel(EDS(1).damage),numel(EDS(3).damage)]),...
-    'Labels',{'WISC historic event set','WISC synthetic event set'})
+    'Labels',{'WISC historic event set','WISC synthetic event set v3'})
 title('Europe'); ylabel('Event Damage [USD]'); set(gcf,'color','white'); 
 figure; boxplot([YDS([1 3]).damage],repelem([0 1],[numel(YDS(1).damage),numel(YDS(3).damage)]),...
-    'Labels',{'WISC historic event set','WISC synthetic event set'})
+    'Labels',{'WISC historic event set','WISC synthetic event set v3'})
 title('Europe'); ylabel('Annual Damage [USD]'); set(gcf,'color','white'); 
 % figure; boxplot([YDS([1 3 4]).damage],repelem([0 1 2],[numel(YDS(1).damage),numel(YDS(3).damage),numel(YDS(4).damage)]),...
 %     'Labels',{'WISC historic event set','WISC synthetic event set','climada event set'})
 % title('Europe'); ylabel('Annual Damage [USD]'); set(gcf,'color','white'); 
-save([climada_global.results_dir filesep '20181120_Workspace_WISC_Europe.mat'], 'EDS', 'EDS_i', 'YDS', 'YDS_i')
-% load([climada_global.results_dir filesep 'Workspace_WISC_Europe.mat'])
+save([climada_global.results_dir filesep '20181214_Workspace_WISC_Europe.mat'], 'EDS', 'EDS_i', 'YDS', 'YDS_i')
+% load([climada_global.results_dir filesep '20181120_Workspace_WISC_Europe.mat'])
 
 % netherlands annual damages
 
