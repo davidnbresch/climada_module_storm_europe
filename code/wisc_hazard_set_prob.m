@@ -87,6 +87,7 @@ function hazard_info=wisc_hazard_set_prob(country_ISO3,hazard,check_plot,add_fra
 %       comment: a free comment with creation date
 % MODIFICATION HISTORY:
 % David N. Bresch, david.bresch@gmail.com, 20170108, initial, split from wisc_hazard_set
+% David N. Bresch, david.bresch@gmail.com, 20190107, re_create_hazard_info added
 %-
 
 hazard_info=[]; % init output
@@ -176,28 +177,38 @@ n_countries=length(country.ISO3);
 admin0_shapes=climada_shaperead(admin0_shape_file); % read country shapes
 
 if exist(hazard_info.filename,'file') % check for consistency with hazard_info from file
+    re_create_hazard_info=0; % assume file is ok
     % add some fields from hazard_info
     load(hazard_info.filename) % contains hazard_info
-    if sum(abs(hazard_info.lon-hazard.lon))+sum(abs(hazard_info.lat-hazard.lat))<1000*eps % check for same grid
-        % grid ok, now check for requested countries being available in hazard_info
-        shape_is=zeros(1,n_countries);
-        for shape_i=1:length(admin0_shapes) % convert ISO3 to shape index, as faster
-            country_contains=contains(country.ISO3,admin0_shapes(shape_i).ADM0_A3);
-            if sum(contains(country.ISO3,admin0_shapes(shape_i).ADM0_A3)) % country within set of requestedones
-                shape_is(country_contains) = shape_i;
+    if isfield(hazard_info,'lon') && isfield(hazard_info,'lat')
+        try
+            if sum(abs(hazard_info.lon-hazard.lon))+sum(abs(hazard_info.lat-hazard.lat))<1000*eps % check for same grid
+                % grid ok, now check for requested countries being available in hazard_info
+                shape_is=zeros(1,n_countries);
+                for shape_i=1:length(admin0_shapes) % convert ISO3 to shape index, as faster
+                    country_contains=contains(country.ISO3,admin0_shapes(shape_i).ADM0_A3);
+                    if sum(contains(country.ISO3,admin0_shapes(shape_i).ADM0_A3)) % country within set of requestedones
+                        shape_is(country_contains) = shape_i;
+                    end
+                end % shape_i
+                if sum(ismember(shape_is,hazard_info.shape.shape_i))==length(shape_is)
+                    fprintf('< hazard_info from %s\n',hazard_info.filename);
+                else
+                    re_create_hazard_info=1;
+                    fprintf('WARNING: hazard_info mismatch with country list, re-created\n');
+                end
             end
-        end % shape_i
-        if sum(ismember(shape_is,hazard_info.shape.shape_i))==length(shape_is)
-            fprintf('< hazard_info from %s\n',hazard_info.filename);
-        else
-            hazard_info=rmfield(hazard_info,'shape_i');
-            hazard_info=rmfield(hazard_info,'shape');
-            fprintf('WARNING: hazard_info mismatch with country list, re-created\n');
+        catch
+            re_create_hazard_info=1;
+            fprintf('WARNING: hazard_info corrupted, re-created\n');
         end
     else
+        re_create_hazard_info=1;
+        fprintf('WARNING: hazard_info mismatch with grid definition, re-created\n');
+    end
+    if re_create_hazard_info
         hazard_info=rmfield(hazard_info,'shape_i');
         hazard_info=rmfield(hazard_info,'shape');
-        fprintf('WARNING: hazard_info mismatch with grid definition, re-created\n');
     end
 end
 
